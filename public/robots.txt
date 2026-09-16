@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Allow: /artikel/
+Allow: /kamera
+Allow: /ulasan
+Allow: /panduan
+Allow: /jurnal
+Disallow: /#cms
+Disallow: /admin
+
+# Dynamic Sitemap Reference
+Sitemap: https://fujifinder.app/sitemap.xml

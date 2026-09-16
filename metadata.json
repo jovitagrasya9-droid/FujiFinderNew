@@ -1,0 +1,6 @@
+{
+  "name": "FujiFinder",
+  "description": "Premium editorial camera and photography media publication, in-depth gear reviews, buyer guides, and camera discovery platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
