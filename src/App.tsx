@@ -22,6 +22,14 @@ import { BlogView } from './components/BlogView';
 
 import { Article, Author, CameraProduct, CategoryType } from './types';
 import { FUJIFILM_STARTER_CAMERAS, FUJIFILM_STARTER_ARTICLES, DEFAULT_AUTHOR } from './data/mockData';
+import {
+  getArticlesFromSupabase,
+  upsertArticleInSupabase,
+  deleteArticleFromSupabase,
+  getCamerasFromSupabase,
+  upsertCameraInSupabase,
+  deleteCameraFromSupabase,
+} from './services/supabaseService';
 
 export default function App() {
   // Navigation & view states
@@ -29,7 +37,7 @@ export default function App() {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<CategoryType | null>(null);
   const [publicArticle, setPublicArticle] = useState<Article | null>(null);
 
-  // Dynamic content states (All dummy data removed, starts empty or with user saved data in localStorage)
+  // Dynamic content states (starts with local cache or empty, then syncs with Supabase)
   const [articles, setArticles] = useState<Article[]>(() => {
     try {
       const saved = localStorage.getItem('fujifinder_articles');
@@ -56,6 +64,35 @@ export default function App() {
       return DEFAULT_AUTHOR;
     }
   });
+
+  // Initial fetch from Supabase cloud database
+  useEffect(() => {
+    let isMounted = true;
+    async function loadFromSupabase() {
+      try {
+        const [articlesRes, camerasRes] = await Promise.all([
+          getArticlesFromSupabase(),
+          getCamerasFromSupabase(),
+        ]);
+
+        if (isMounted) {
+          if (articlesRes.data && articlesRes.data.length > 0) {
+            setArticles(articlesRes.data);
+          }
+          if (camerasRes.data && camerasRes.data.length > 0) {
+            setCameras(camerasRes.data);
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase fetch notice:', err);
+      }
+    }
+
+    loadFromSupabase();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Sync to local storage on changes
   useEffect(() => {
@@ -162,29 +199,47 @@ export default function App() {
     setComparisonModalOpen(true);
   };
 
-  // CMS Handlers
+  // CMS Handlers with Supabase Sync
   const handleAddArticle = (newArticle: Article) => {
     setArticles((prev) => [newArticle, ...prev]);
+    upsertArticleInSupabase(newArticle).catch((err) => {
+      console.warn('Background Supabase article insert notice:', err);
+    });
   };
 
   const handleUpdateArticle = (updatedArticle: Article) => {
     setArticles((prev) => prev.map((a) => (a.id === updatedArticle.id ? updatedArticle : a)));
+    upsertArticleInSupabase(updatedArticle).catch((err) => {
+      console.warn('Background Supabase article update notice:', err);
+    });
   };
 
   const handleDeleteArticle = (id: string) => {
     setArticles((prev) => prev.filter((a) => a.id !== id));
+    deleteArticleFromSupabase(id).catch((err) => {
+      console.warn('Background Supabase article delete notice:', err);
+    });
   };
 
   const handleAddCamera = (newCamera: CameraProduct) => {
     setCameras((prev) => [newCamera, ...prev]);
+    upsertCameraInSupabase(newCamera).catch((err) => {
+      console.warn('Background Supabase camera insert notice:', err);
+    });
   };
 
   const handleUpdateCamera = (updatedCamera: CameraProduct) => {
     setCameras((prev) => prev.map((c) => (c.id === updatedCamera.id ? updatedCamera : c)));
+    upsertCameraInSupabase(updatedCamera).catch((err) => {
+      console.warn('Background Supabase camera update notice:', err);
+    });
   };
 
   const handleDeleteCamera = (id: string) => {
     setCameras((prev) => prev.filter((c) => c.id !== id));
+    deleteCameraFromSupabase(id).catch((err) => {
+      console.warn('Background Supabase camera delete notice:', err);
+    });
   };
 
   const handleClearAllData = () => {
@@ -197,6 +252,9 @@ export default function App() {
   const handleLoadPresetData = () => {
     setArticles(FUJIFILM_STARTER_ARTICLES);
     setCameras(FUJIFILM_STARTER_CAMERAS);
+    // Also sync starter pack to Supabase
+    FUJIFILM_STARTER_ARTICLES.forEach((a) => upsertArticleInSupabase(a));
+    FUJIFILM_STARTER_CAMERAS.forEach((c) => upsertCameraInSupabase(c));
   };
 
   const handleUpdateGlobalAuthor = (newAuthor: Author, applyToAll: boolean = false) => {

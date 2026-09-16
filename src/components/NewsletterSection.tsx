@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { addSubscriberToSupabase } from '../services/supabaseService';
 
 export const NewsletterSection: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -15,7 +16,11 @@ export const NewsletterSection: React.FC = () => {
 
     setError('');
     setSubscribed(true);
-    // Save to local storage for CMS subscriber view
+
+    // 1. Sync to Supabase Database
+    addSubscriberToSupabase(email);
+
+    // 2. Save to local storage fallback for CMS subscriber view
     try {
       const raw = localStorage.getItem('FujiFinder_subscribers');
       const existing = raw ? JSON.parse(raw) : [];

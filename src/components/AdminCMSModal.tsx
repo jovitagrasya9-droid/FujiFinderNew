@@ -28,12 +28,26 @@ import {
   Copy,
   Check,
   FileCode,
+  Database,
+  Server,
+  HardDrive,
+  Cloud,
+  CheckCircle2,
 } from 'lucide-react';
 import { Article, Author, CameraProduct, CategoryType } from '../types';
 import { DEFAULT_AUTHOR } from '../data/mockData';
 import { formatIDR } from '../utils/formatCurrency';
 import { generateSlug, checkSEOReadiness } from '../utils/seoManager';
 import { generateSitemapXml, downloadSitemap } from '../utils/sitemapGenerator';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, checkSupabaseConnection } from '../lib/supabase';
+import {
+  SUPABASE_SQL_SCHEMA,
+  upsertArticleInSupabase,
+  upsertCameraInSupabase,
+  getArticlesFromSupabase,
+  getCamerasFromSupabase,
+  getSubscribersFromSupabase,
+} from '../services/supabaseService';
 
 interface AdminCMSModalProps {
   isOpen: boolean;
@@ -147,7 +161,92 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
   // ==========================================
   // CMS TABS & GENERAL STATE
   // ==========================================
-  const [activeTab, setActiveTab] = useState<'articles' | 'cameras' | 'authors' | 'subscribers'>('articles');
+  const [activeTab, setActiveTab] = useState<'articles' | 'cameras' | 'authors' | 'subscribers' | 'database'>('articles');
+
+  // Supabase Database Connection & Sync State
+  const [supabaseStatus, setSupabaseStatus] = useState<'unknown' | 'testing' | 'connected' | 'error'>('unknown');
+  const [supabaseMessage, setSupabaseMessage] = useState<string>('Koneksi siap diverifikasi');
+  const [isSyncingToSupabase, setIsSyncingToSupabase] = useState(false);
+  const [isPullingFromSupabase, setIsPullingFromSupabase] = useState(false);
+  const [supabaseSyncMsg, setSupabaseSyncMsg] = useState<string | null>(null);
+  const [copiedSql, setCopiedSql] = useState(false);
+
+  // Test connection on mount or tab change
+  const handleTestConnection = async () => {
+    setSupabaseStatus('testing');
+    setSupabaseMessage('Menghubungkan ke server Supabase...');
+    const result = await checkSupabaseConnection();
+    if (result.connected) {
+      setSupabaseStatus('connected');
+      setSupabaseMessage(result.message || 'Terhubung dengan Supabase Cloud Database');
+    } else {
+      setSupabaseStatus('error');
+      setSupabaseMessage(result.message || 'Gagal terhubung ke Supabase');
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      checkSupabaseConnection().then((res) => {
+        setSupabaseStatus(res.connected ? 'connected' : 'error');
+        setSupabaseMessage(res.message || (res.connected ? 'Terhubung' : 'Gagal terhubung'));
+      });
+    }
+  }, [isOpen]);
+
+  const handleSyncAllToSupabase = async () => {
+    setIsSyncingToSupabase(true);
+    setSupabaseSyncMsg(null);
+    try {
+      let articleSuccessCount = 0;
+      let cameraSuccessCount = 0;
+
+      for (const art of articles) {
+        const res = await upsertArticleInSupabase(art);
+        if (res.success) articleSuccessCount++;
+      }
+
+      for (const cam of cameras) {
+        const res = await upsertCameraInSupabase(cam);
+        if (res.success) cameraSuccessCount++;
+      }
+
+      setSupabaseSyncMsg(`Berhasil sinkronisasi ${articleSuccessCount} artikel & ${cameraSuccessCount} kamera ke Supabase!`);
+      setSupabaseStatus('connected');
+    } catch (err: any) {
+      setSupabaseSyncMsg(`Gagal sinkronisasi: ${err?.message || 'Error tidak diketahui'}`);
+    } finally {
+      setIsSyncingToSupabase(false);
+    }
+  };
+
+  const handlePullFromSupabase = async () => {
+    setIsPullingFromSupabase(true);
+    setSupabaseSyncMsg(null);
+    try {
+      const [artRes, camRes] = await Promise.all([
+        getArticlesFromSupabase(),
+        getCamerasFromSupabase(),
+      ]);
+
+      let msg = '';
+      if (artRes.data) {
+        artRes.data.forEach((a) => onAddArticle(a));
+        msg += `${artRes.data.length} artikel ditarik. `;
+      }
+      if (camRes.data) {
+        camRes.data.forEach((c) => onAddCamera(c));
+        msg += `${camRes.data.length} kamera ditarik.`;
+      }
+
+      setSupabaseSyncMsg(`Sukses! ${msg || 'Tidak ada data baru di Supabase.'}`);
+      setSupabaseStatus('connected');
+    } catch (err: any) {
+      setSupabaseSyncMsg(`Gagal menarik data: ${err?.message || 'Error tidak diketahui'}`);
+    } finally {
+      setIsPullingFromSupabase(false);
+    }
+  };
 
   // ==========================================
   // 1. ARTICLE STATE & FILTERS
@@ -937,6 +1036,21 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
               >
                 <Users className="w-4 h-4" />
                 <span>Subscribers ({subscribers.length})</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('database')}
+                className={`py-3.5 px-4 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
+                  activeTab === 'database'
+                    ? 'border-emerald-600 text-emerald-700 font-bold'
+                    : 'border-transparent text-neutral-500 hover:text-emerald-700'
+                }`}
+              >
+                <Database className="w-4 h-4 text-emerald-600" />
+                <span>Supabase Database</span>
+                <span className={`w-2 h-2 rounded-full ${
+                  supabaseStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : supabaseStatus === 'testing' ? 'bg-amber-500 animate-ping' : 'bg-neutral-400'
+                }`} />
               </button>
             </div>
 
@@ -2361,6 +2475,191 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
                       </table>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* ========================================================================= */}
+              {/* TAB 5: SUPABASE CLOUD DATABASE INTEGRATION */}
+              {/* ========================================================================= */}
+              {activeTab === 'database' && (
+                <div className="space-y-6 animate-fadeIn">
+                  {/* Status Banner */}
+                  <div className="p-5 rounded-2xl border bg-gradient-to-br from-emerald-950/90 to-neutral-900 text-white border-emerald-800/80 shadow-lg">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                          <Database className="w-6 h-6 text-emerald-400" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-base sm:text-lg font-bold text-white">
+                              Supabase Cloud Database
+                            </h3>
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                              supabaseStatus === 'connected'
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                : supabaseStatus === 'testing'
+                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                : 'bg-neutral-800 text-neutral-300 border border-neutral-700'
+                            }`}>
+                              <span className={`w-2 h-2 rounded-full ${
+                                supabaseStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+                              }`} />
+                              {supabaseStatus === 'connected' ? 'Terhubung (Online)' : supabaseStatus === 'testing' ? 'Memverifikasi...' : 'Status Terkonfigurasi'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-neutral-300 mt-1">
+                            {supabaseMessage}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={handleTestConnection}
+                        disabled={supabaseStatus === 'testing'}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${supabaseStatus === 'testing' ? 'animate-spin' : ''}`} />
+                        <span>Test Koneksi</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Notification sync message */}
+                  {supabaseSyncMsg && (
+                    <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm font-medium flex items-center justify-between animate-fadeIn">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>{supabaseSyncMsg}</span>
+                      </div>
+                      <button
+                        onClick={() => setSupabaseSyncMsg(null)}
+                        className="text-emerald-700 hover:text-emerald-950 font-bold"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Project Details Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-5 rounded-2xl border border-neutral-200 bg-white space-y-3">
+                      <div className="flex items-center gap-2 text-neutral-900 font-bold text-sm">
+                        <Server className="w-4 h-4 text-neutral-500" />
+                        <span>Project Credentials</span>
+                      </div>
+
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between py-1.5 border-b border-neutral-100">
+                          <span className="text-neutral-500">Project Name:</span>
+                          <span className="font-semibold text-neutral-900">jovitagrasya9-droid's Project</span>
+                        </div>
+                        <div className="flex justify-between py-1.5 border-b border-neutral-100">
+                          <span className="text-neutral-500">Project ID:</span>
+                          <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                            pytnktxszkcnmgmrlaff
+                          </span>
+                        </div>
+                        <div className="flex justify-between py-1.5 border-b border-neutral-100">
+                          <span className="text-neutral-500">REST Endpoint:</span>
+                          <span className="font-mono text-neutral-700 truncate max-w-[240px]" title={SUPABASE_URL}>
+                            {SUPABASE_URL}
+                          </span>
+                        </div>
+                        <div className="flex justify-between py-1.5">
+                          <span className="text-neutral-500">Public Key:</span>
+                          <span className="font-mono text-neutral-700 truncate max-w-[240px]" title={SUPABASE_ANON_KEY}>
+                            {SUPABASE_ANON_KEY.substring(0, 16)}...
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-5 rounded-2xl border border-neutral-200 bg-white space-y-3 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 text-neutral-900 font-bold text-sm">
+                          <Cloud className="w-4 h-4 text-neutral-500" />
+                          <span>Sinkronisasi Data Realtime</span>
+                        </div>
+                        <p className="text-xs text-neutral-600 mt-1.5 leading-relaxed">
+                          Setiap penambahan, edit, dan penghapusan artikel atau kamera di CMS ini langsung otomatis tersinkronisasi ke database Supabase. Anda juga dapat melakukan backup/push manual sewaktu-waktu.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2.5 pt-2">
+                        <button
+                          onClick={handleSyncAllToSupabase}
+                          disabled={isSyncingToSupabase}
+                          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-neutral-950 hover:bg-neutral-800 text-white cursor-pointer transition-all disabled:opacity-50"
+                        >
+                          <Upload className={`w-3.5 h-3.5 ${isSyncingToSupabase ? 'animate-bounce' : ''}`} />
+                          <span>{isSyncingToSupabase ? 'Mengunggah...' : 'Upload Semua ke Supabase'}</span>
+                        </button>
+
+                        <button
+                          onClick={handlePullFromSupabase}
+                          disabled={isPullingFromSupabase}
+                          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-900 border border-neutral-300 cursor-pointer transition-all disabled:opacity-50"
+                        >
+                          <Download className={`w-3.5 h-3.5 ${isPullingFromSupabase ? 'animate-bounce' : ''}`} />
+                          <span>{isPullingFromSupabase ? 'Menarik...' : 'Tarik Data dari Supabase'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SQL Schema Setup Helper */}
+                  <div className="p-5 rounded-2xl border border-neutral-200 bg-white space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-neutral-100">
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-bold text-neutral-900 flex items-center gap-2">
+                          <FileCode className="w-4 h-4 text-neutral-600" />
+                          <span>SQL Setup Schema (Jika Tabel Belum Dibuat)</span>
+                        </h4>
+                        <p className="text-xs text-neutral-500">
+                          Jalankan script SQL ini 1x di Supabase SQL Editor untuk membuat tabel articles, cameras, dan subscribers dengan RLS.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(SUPABASE_SQL_SCHEMA);
+                            setCopiedSql(true);
+                            setTimeout(() => setCopiedSql(false), 2000);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-200 cursor-pointer transition-all"
+                        >
+                          {copiedSql ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                              <span className="text-emerald-700">Tersalin!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5" />
+                              <span>Salin SQL</span>
+                            </>
+                          )}
+                        </button>
+
+                        <a
+                          href="https://supabase.com/dashboard/project/pytnktxszkcnmgmrlaff/sql"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer transition-all shadow-sm"
+                        >
+                          <span>Buka Supabase SQL Editor</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    </div>
+
+                    <pre className="p-3.5 rounded-xl bg-neutral-900 text-neutral-200 text-[11px] font-mono overflow-x-auto max-h-56 leading-relaxed border border-neutral-800">
+                      {SUPABASE_SQL_SCHEMA}
+                    </pre>
+                  </div>
                 </div>
               )}
             </div>
