@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { addSubscriberToSupabase } from '../services/supabaseService';
+import { trackEvent } from '../utils/analytics';
 
 export const NewsletterSection: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -16,6 +17,11 @@ export const NewsletterSection: React.FC = () => {
 
     setError('');
     setSubscribed(true);
+
+    // Track in Google Analytics
+    trackEvent('newsletter_subscribe', {
+      method: 'footer_banner'
+    });
 
     // 1. Sync to Supabase Database
     addSubscriberToSupabase(email);

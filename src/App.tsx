@@ -22,6 +22,7 @@ import { BlogView } from './components/BlogView';
 
 import { Article, Author, CameraProduct, CategoryType } from './types';
 import { FUJIFILM_STARTER_CAMERAS, FUJIFILM_STARTER_ARTICLES, DEFAULT_AUTHOR } from './data/mockData';
+import { trackPageView, trackEvent } from './utils/analytics';
 import {
   getArticlesFromSupabase,
   upsertArticleInSupabase,
@@ -134,6 +135,31 @@ export default function App() {
     window.addEventListener('popstate', handleUrlRouting);
     return () => window.removeEventListener('popstate', handleUrlRouting);
   }, [articles]);
+
+  // Track SPA pageviews in Google Analytics
+  useEffect(() => {
+    let path = '/';
+    let title = 'FujiFinder — The Art & Science of Modern Cameras';
+
+    if (currentView === 'public-article' && publicArticle) {
+      path = `/artikel/${publicArticle.slug}`;
+      title = `${publicArticle.title} — FujiFinder`;
+    } else if (currentView === 'cameras') {
+      path = selectedCategoryFilter ? `/kamera?kategori=${selectedCategoryFilter}` : '/kamera';
+      title = selectedCategoryFilter ? `Katalog Kamera ${selectedCategoryFilter} — FujiFinder` : 'Katalog Kamera — FujiFinder';
+    } else if (currentView === 'reviews') {
+      path = '/reviews';
+      title = 'Lab Reviews & Field Tests — FujiFinder';
+    } else if (currentView === 'guides') {
+      path = '/guides';
+      title = 'Panduan Fotografi & Resep Film — FujiFinder';
+    } else if (currentView === 'blog') {
+      path = '/blog';
+      title = 'Jurnal & Opini Fotografi — FujiFinder';
+    }
+
+    trackPageView(path, title);
+  }, [currentView, selectedCategoryFilter, publicArticle]);
 
   // Modal states
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
