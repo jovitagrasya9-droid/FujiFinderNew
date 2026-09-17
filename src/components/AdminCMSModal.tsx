@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { Article, Author, CameraProduct, CategoryType } from '../types';
 import { DEFAULT_AUTHOR } from '../data/mockData';
+import { FujiFinderLogo } from './FujiFinderLogo';
 import { formatIDR } from '../utils/formatCurrency';
 import { generateSlug, checkSEOReadiness } from '../utils/seoManager';
 import { generateSitemapXml, downloadSitemap } from '../utils/sitemapGenerator';
@@ -777,11 +778,12 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
           <div className="flex flex-col">
             {/* Header Lock */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 bg-neutral-900 text-white">
-              <div className="flex items-center gap-2.5">
-                <Lock className="w-5 h-5 text-neutral-300" />
+              <div className="flex items-center gap-3">
+                <FujiFinderLogo variant="light" size="sm" showTagline={false} />
+                <span className="text-neutral-500 font-normal">|</span>
                 <div>
-                  <h2 className="text-base font-bold leading-tight">FujiFinder Editorial CMS</h2>
-                  <p className="text-xs text-neutral-400">Autentikasi Akses Administrator</p>
+                  <h2 className="text-sm font-bold leading-tight text-neutral-200">Editorial CMS</h2>
+                  <p className="text-[11px] text-neutral-400">Autentikasi Akses Administrator</p>
                 </div>
               </div>
               <button
@@ -793,9 +795,9 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
             </div>
 
             {/* Login Box */}
-            <div className="p-8 sm:p-12 flex flex-col items-center justify-center text-center max-w-md mx-auto w-full">
-              <div className="w-14 h-14 rounded-2xl bg-neutral-100 border border-neutral-200 flex items-center justify-center mb-5 text-neutral-800 shadow-sm">
-                <KeyRound className="w-7 h-7" />
+            <div className="p-8 sm:p-10 flex flex-col items-center justify-center text-center max-w-md mx-auto w-full">
+              <div className="mb-5">
+                <FujiFinderLogo variant="dark" size="lg" layout="stacked" showTagline={true} />
               </div>
 
               <h3 className="text-lg sm:text-xl font-black text-neutral-900 mb-2">
@@ -857,17 +859,18 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
           <>
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 bg-neutral-900 text-white shrink-0">
-              <div className="flex items-center gap-2.5">
-                <SlidersHorizontal className="w-5 h-5 text-neutral-300" />
+              <div className="flex items-center gap-3">
+                <FujiFinderLogo variant="light" size="sm" showTagline={false} />
+                <span className="text-neutral-500 font-normal">|</span>
                 <div>
-                  <h2 className="text-base font-bold leading-tight flex items-center gap-2">
-                    <span>FujiFinder Editorial CMS</span>
+                  <h2 className="text-sm font-bold leading-tight flex items-center gap-2">
+                    <span className="text-neutral-100">Editorial CMS Studio</span>
                     <span className="text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
                       <ShieldCheck className="w-3 h-3" />
                       Terproteksi
                     </span>
                   </h2>
-                  <p className="text-xs text-neutral-400">Manajemen konten artikel, editor, katalog kamera & subscribers</p>
+                  <p className="text-[11px] text-neutral-400">Manajemen konten artikel, editor, katalog kamera & subscribers</p>
                 </div>
               </div>
 

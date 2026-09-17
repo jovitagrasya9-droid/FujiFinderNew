@@ -1,6 +1,7 @@
 import React from 'react';
-import { Camera, ArrowUp, SlidersHorizontal } from 'lucide-react';
+import { ArrowUp, SlidersHorizontal } from 'lucide-react';
 import { CategoryType } from '../types';
+import { FujiFinderLogo } from './FujiFinderLogo';
 
 interface FooterProps {
   onNavigate: (view: string, filter?: string) => void;
@@ -32,14 +33,12 @@ export const Footer: React.FC<FooterProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8 pb-12 border-b border-neutral-200/80">
           {/* Brand Col (2 cols on lg) */}
           <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-neutral-950 flex items-center justify-center text-white">
-                <Camera className="w-4 h-4" />
-              </div>
-              <span className="font-bold text-lg tracking-tight text-neutral-950">
-                Fuji<span className="font-normal text-neutral-500">Finder</span>
-              </span>
-            </div>
+            <button
+              onClick={() => onNavigate('home')}
+              className="text-left cursor-pointer focus:outline-none"
+            >
+              <FujiFinderLogo variant="dark" size="lg" showTagline={true} />
+            </button>
 
             <p className="text-sm text-neutral-600 max-w-sm leading-relaxed">
               An independent camera media journal and gear discovery platform. We deliver rigorous lab testing, field reviews, and practical guides for photographers and filmmakers.

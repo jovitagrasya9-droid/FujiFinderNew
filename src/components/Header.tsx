@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Menu, X, Camera, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { Search, Menu, X, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { FujiFinderLogo } from './FujiFinderLogo';
 
 interface HeaderProps {
   currentView: string;
@@ -46,14 +47,9 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           id="brand-logo-btn"
           onClick={() => onNavigate('home')}
-          className="flex items-center gap-2.5 text-white group cursor-pointer focus:outline-none"
+          className="flex items-center text-white group cursor-pointer focus:outline-none"
         >
-          <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-neutral-950 transition-colors">
-            <Camera className="w-4 h-4 text-white group-hover:text-neutral-950 transition-colors" />
-          </div>
-          <span className="font-bold text-lg tracking-tight text-white flex items-center">
-            Fuji<span className="text-neutral-300 font-medium">Finder</span>
-          </span>
+          <FujiFinderLogo variant="light" size="md" showTagline={false} />
         </button>
 
         {/* Desktop Navigation Links */}
