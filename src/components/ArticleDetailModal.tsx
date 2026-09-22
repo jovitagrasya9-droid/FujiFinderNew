@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Clock, Share2, Bookmark, Check, ArrowRight, Camera, Star, ExternalLink, ShieldCheck } from 'lucide-react';
 import { Article, CameraProduct } from '../types';
+import { ArticleContentRenderer } from './ArticleContentRenderer';
 import { CAMERAS_DATA } from '../data/mockData';
 import { formatIDR } from '../utils/formatCurrency';
 import { setArticleSEO, resetDefaultSEO } from '../utils/seoManager';
@@ -163,13 +164,9 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
             "{article.summary}"
           </p>
 
-          {/* Paragraphs */}
-          <div className="space-y-6 text-base sm:text-lg text-neutral-800 leading-relaxed font-normal">
-            {article.content.map((paragraph, idx) => (
-              <p key={idx} className="leading-relaxed">
-                {paragraph}
-              </p>
-            ))}
+          {/* Content Body */}
+          <div className="space-y-6 text-neutral-800 leading-relaxed font-normal">
+            <ArticleContentRenderer content={article.content} />
           </div>
 
           {/* Featured Camera Callout if applicable */}

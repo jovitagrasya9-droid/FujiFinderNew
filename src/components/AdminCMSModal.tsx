@@ -37,6 +37,8 @@ import {
 import { Article, Author, CameraProduct, CategoryType } from '../types';
 import { DEFAULT_AUTHOR } from '../data/mockData';
 import { FujiFinderLogo } from './FujiFinderLogo';
+import { ArticleRichEditor } from './ArticleRichEditor';
+import { ArticleContentRenderer } from './ArticleContentRenderer';
 import { formatIDR } from '../utils/formatCurrency';
 import { generateSlug, checkSEOReadiness } from '../utils/seoManager';
 import { generateSitemapXml, downloadSitemap } from '../utils/sitemapGenerator';
@@ -1416,17 +1418,21 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
                         </div>
                       </div>
 
-                      {/* Section 5: Isi Paragraf Konten */}
+                      {/* Section 5: Isi Paragraf Konten dengan Rich Editor & Word Parser */}
                       <div>
-                        <label className="text-xs font-bold text-neutral-700 block mb-1">
-                          Konten Lengkap (Pisahkan paragraf dengan baris baru)
-                        </label>
-                        <textarea
-                          rows={4}
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-xs font-bold text-neutral-800 flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                            Konten Lengkap Artikel (Mendukung Copy-Paste dari Word & Docs)
+                          </label>
+                          <span className="text-[11px] text-neutral-500 font-medium">
+                            Tabel, Heading, & Paragraf tetap rapi
+                          </span>
+                        </div>
+                        <ArticleRichEditor
                           value={artContent}
-                          onChange={(e) => setArtContent(e.target.value)}
-                          placeholder="Tuliskan analisis editorial, pengalaman di lapangan, atau tips panduan..."
-                          className="w-full text-xs sm:text-sm p-2.5 rounded-xl border border-neutral-300 bg-white focus:outline-none focus:border-neutral-950 font-sans"
+                          onChange={setArtContent}
+                          placeholder="Salin teks dari Microsoft Word / Google Docs lalu langsung Paste (Ctrl+V) di sini..."
                         />
                       </div>
 
@@ -2725,10 +2731,8 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
                       {previewArticle.summary}
                     </p>
 
-                    <div className="space-y-2.5 text-xs sm:text-sm text-neutral-600 leading-relaxed pt-2">
-                      {previewArticle.content.map((paragraph, idx) => (
-                        <p key={idx}>{paragraph}</p>
-                      ))}
+                    <div className="pt-2">
+                      <ArticleContentRenderer content={previewArticle.content} />
                     </div>
                   </div>
                 </div>

@@ -15,6 +15,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { Article, CameraProduct } from '../types';
+import { ArticleContentRenderer } from './ArticleContentRenderer';
 import { setArticleSEO, resetDefaultSEO } from '../utils/seoManager';
 import { formatIDR } from '../utils/formatCurrency';
 
@@ -236,55 +237,8 @@ export const PublicArticleView: React.FC<PublicArticleViewProps> = ({
       </div>
 
       {/* 4. Article Body Content */}
-      <div
-        itemProp="articleBody"
-        className="prose prose-neutral max-w-none space-y-6 text-base sm:text-lg text-neutral-700 leading-relaxed"
-      >
-        {article.content && article.content.length > 0 ? (
-          article.content.map((paragraph, index) => {
-            // Check if line looks like a sub-heading (starts with # or **)
-            if (paragraph.startsWith('### ')) {
-              return (
-                <h3
-                  key={index}
-                  className="text-xl sm:text-2xl font-bold text-neutral-900 pt-6 pb-2"
-                >
-                  {paragraph.replace('### ', '')}
-                </h3>
-              );
-            }
-            if (paragraph.startsWith('## ')) {
-              return (
-                <h2
-                  key={index}
-                  className="text-2xl sm:text-3xl font-extrabold text-neutral-900 pt-8 pb-3 border-b border-neutral-100"
-                >
-                  {paragraph.replace('## ', '')}
-                </h2>
-              );
-            }
-            if (paragraph.startsWith('> ')) {
-              return (
-                <blockquote
-                  key={index}
-                  className="border-l-4 border-neutral-900 pl-4 py-2 my-4 italic text-neutral-800 bg-neutral-50 rounded-r-xl"
-                >
-                  {paragraph.replace('> ', '')}
-                </blockquote>
-              );
-            }
-
-            return (
-              <p key={index} className="leading-relaxed">
-                {paragraph}
-              </p>
-            );
-          })
-        ) : (
-          <p className="text-neutral-500 italic">
-            {article.summary || 'Tidak ada konten teks tambahan untuk artikel ini.'}
-          </p>
-        )}
+      <div itemProp="articleBody" className="space-y-6 text-neutral-800 leading-relaxed">
+        <ArticleContentRenderer content={article.content} />
       </div>
 
       {/* 5. Recommended Camera Highlight Box (if available) */}
