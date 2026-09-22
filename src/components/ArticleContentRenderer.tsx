@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { cleanWordHtml } from '../utils/wordParser';
 
 interface ArticleContentRendererProps {
   content: string[] | string;
@@ -11,15 +12,14 @@ export const ArticleContentRenderer: React.FC<ArticleContentRendererProps> = ({
   content,
   className = '',
 }) => {
-  // Convert array or string to unified markdown
-  const markdownText = React.useMemo(() => {
+  const fullText = useMemo(() => {
     if (Array.isArray(content)) {
       return content.filter(Boolean).join('\n\n');
     }
     return content || '';
   }, [content]);
 
-  if (!markdownText.trim()) {
+  if (!fullText.trim()) {
     return (
       <p className="text-neutral-400 italic text-sm py-4">
         Belum ada konten tulisan untuk artikel ini.
@@ -27,8 +27,23 @@ export const ArticleContentRenderer: React.FC<ArticleContentRendererProps> = ({
     );
   }
 
+  // Detect if content is Rich HTML (from Visual Editor / Word Paste)
+  const isHtml = /<(table|p|h1|h2|h3|h4|ul|ol|blockquote|div)[\s>]/i.test(fullText);
+
+  if (isHtml) {
+    const sanitizedHtml = cleanWordHtml(fullText);
+
+    return (
+      <div
+        className={`fujifinder-article-prose ${className}`}
+        dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+      />
+    );
+  }
+
+  // Otherwise fallback to Markdown with GFM table support
   return (
-    <div className={`article-content-body ${className}`}>
+    <div className={`article-content-body fujifinder-article-prose ${className}`}>
       <Markdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -47,13 +62,8 @@ export const ArticleContentRenderer: React.FC<ArticleContentRendererProps> = ({
               {children}
             </h3>
           ),
-          h4: ({ children }) => (
-            <h4 className="text-lg font-bold text-neutral-900 pt-4 pb-1 mt-2">
-              {children}
-            </h4>
-          ),
           p: ({ children }) => (
-            <p className="text-base sm:text-lg text-neutral-700 leading-relaxed mb-6 font-normal">
+            <p className="text-base sm:text-lg text-neutral-800 leading-relaxed mb-6 font-normal">
               {children}
             </p>
           ),
@@ -95,7 +105,7 @@ export const ArticleContentRenderer: React.FC<ArticleContentRendererProps> = ({
           table: ({ children }) => (
             <div className="my-8 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xs">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[520px] text-left border-collapse">
+                <table className="w-full min-w-[520px] text-left border-collapse fujifinder-table">
                   {children}
                 </table>
               </div>
@@ -134,7 +144,7 @@ export const ArticleContentRenderer: React.FC<ArticleContentRendererProps> = ({
           hr: () => <hr className="my-8 border-neutral-200" />,
         }}
       >
-        {markdownText}
+        {fullText}
       </Markdown>
     </div>
   );

@@ -449,8 +449,11 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
     e.preventDefault();
     if (!artTitle.trim()) return;
 
+    // If content is rich HTML (contains tables, paragraphs, headings), preserve whole HTML document
     const contentParagraphs = artContent.trim()
-      ? artContent.split('\n\n').filter((p) => p.trim().length > 0)
+      ? (artContent.includes('<table') || artContent.includes('<p') || artContent.includes('<h') || artContent.includes('<ul')
+          ? [artContent.trim()]
+          : artContent.split('\n\n').filter((p) => p.trim().length > 0))
       : [artSummary, 'Pengujian teknis dan pengamatan mendalam oleh tim editorial FujiFinder.'];
 
     const articleAuthor: Author = {

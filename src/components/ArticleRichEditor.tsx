@@ -1,22 +1,30 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Heading2,
   Heading3,
   Bold,
   Italic,
-  Table as TableIcon,
+  Underline,
   List,
-  Quote,
+  ListOrdered,
+  Table as TableIcon,
+  Plus,
+  Trash2,
+  Columns,
+  Rows,
   Sparkles,
-  Eye,
-  Edit3,
-  FileText,
-  CheckCircle2,
   HelpCircle,
+  CheckCircle2,
   Wand2,
+  Quote,
+  Code,
+  Eye,
 } from 'lucide-react';
-import { convertWordHtmlToMarkdown, cleanPlainTextWordPaste, autoFormatArticleText } from '../utils/wordParser';
-import { ArticleContentRenderer } from './ArticleContentRenderer';
+import {
+  cleanWordHtml,
+  convertTabsToHtmlTable,
+  convertMarkdownOrTextToVisualHtml,
+} from '../utils/wordParser';
 
 interface ArticleRichEditorProps {
   value: string;
@@ -27,325 +35,511 @@ interface ArticleRichEditorProps {
 export const ArticleRichEditor: React.FC<ArticleRichEditorProps> = ({
   value,
   onChange,
-  placeholder = 'Tulis atau paste isi artikel dari Word / Docs di sini...',
+  placeholder = 'Salin (Ctrl+C) teks dan tabel dari Microsoft Word / Google Docs, lalu tempel (Ctrl+V) di sini...',
 }) => {
-  const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
+  const editorRef = useRef<HTMLDivElement>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showWordHelp, setShowWordHelp] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [activeInTable, setActiveInTable] = useState(false);
+  const [viewMode, setViewMode] = useState<'visual' | 'code'>('visual');
+  const [stats, setStats] = useState({ words: 0, tables: 0 });
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4000);
+    setTimeout(() => setToastMessage(null), 4500);
   };
 
-  // Intercept Paste event from Word / Google Docs
-  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+  // Convert incoming value (markdown or HTML) to visual HTML on load or external change
+  useEffect(() => {
+    if (!editorRef.current) return;
+    const currentHtml = editorRef.current.innerHTML;
+    const targetHtml = convertMarkdownOrTextToVisualHtml(value);
+
+    // Only update DOM if drastically different to avoid cursor jumps
+    if (targetHtml !== currentHtml && (currentHtml === '' || targetHtml === '')) {
+      editorRef.current.innerHTML = targetHtml;
+      updateStats();
+    } else if (
+      targetHtml &&
+      !currentHtml.includes('<table') &&
+      targetHtml.includes('<table')
+    ) {
+      // If target contains tables and current DOM doesn't have it, hydrate
+      editorRef.current.innerHTML = targetHtml;
+      updateStats();
+    }
+  }, [value]);
+
+  const updateStats = () => {
+    if (!editorRef.current) return;
+    const text = editorRef.current.innerText || '';
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    const tables = editorRef.current.querySelectorAll('table').length;
+    setStats({ words, tables });
+  };
+
+  // Detect if cursor is inside a table
+  const checkCursorPosition = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      setActiveInTable(false);
+      return;
+    }
+    let node: Node | null = selection.anchorNode;
+    let foundTable = false;
+    while (node && node !== editorRef.current) {
+      if (node.nodeName === 'TABLE') {
+        foundTable = true;
+        break;
+      }
+      node = node.parentNode;
+    }
+    setActiveInTable(foundTable);
+  };
+
+  const handleInput = () => {
+    if (!editorRef.current) return;
+    const html = editorRef.current.innerHTML;
+    onChange(html);
+    updateStats();
+    checkCursorPosition();
+  };
+
+  // Intercept Paste: The Magic Sauce for Microsoft Word & Google Docs
+  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
     const clipboard = e.clipboardData;
     const html = clipboard.getData('text/html');
     const text = clipboard.getData('text/plain');
 
-    // 1. If clipboard contains HTML from Word or Docs
-    if (html && (html.includes('<table') || html.includes('Mso') || html.includes('<p') || html.includes('<h'))) {
-      const parsedMarkdown = convertWordHtmlToMarkdown(html);
-      if (parsedMarkdown && parsedMarkdown.trim().length > 0) {
-        e.preventDefault();
-        insertTextAtCursor(parsedMarkdown);
-        showToast('✨ Format Word Terdeteksi: Tabel & paragraf berhasil dirapikan secara otomatis!');
-        return;
-      }
-    }
-
-    // 2. If clipboard has tab-separated values (Word/Excel table copied as text) or single linebreaks
-    if (text && (text.includes('\t') || text.includes('\r\n'))) {
-      const cleaned = cleanPlainTextWordPaste(text);
-      if (cleaned !== text) {
-        e.preventDefault();
-        insertTextAtCursor(cleaned);
-        showToast('✨ Teks Word Berhasil Diformat: Paragraf & tabel dipisahkan rapi!');
-        return;
-      }
-    }
-  };
-
-  const insertTextAtCursor = (textToInsert: string) => {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      onChange(value ? `${value}\n\n${textToInsert}` : textToInsert);
+    // 1. If clipboard contains rich HTML from Word / Docs
+    if (html && (html.includes('<table') || html.includes('Mso') || html.includes('<p') || html.includes('<tr'))) {
+      e.preventDefault();
+      const cleanedHtml = cleanWordHtml(html);
+      document.execCommand('insertHTML', false, cleanedHtml);
+      handleInput();
+      showToast('✨ Sukses! Tabel & isi dari Word berhasil ditempel persis sesuai aslinya.');
       return;
     }
 
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const previous = textarea.value;
-
-    const before = previous.substring(0, start);
-    const after = previous.substring(end, previous.length);
-
-    // Ensure double newlines if inserting between existing text
-    const prefix = before.length > 0 && !before.endsWith('\n\n') ? (before.endsWith('\n') ? '\n' : '\n\n') : '';
-    const suffix = after.length > 0 && !after.startsWith('\n\n') ? (after.startsWith('\n') ? '\n' : '\n\n') : '';
-
-    const updated = before + prefix + textToInsert + suffix + after;
-    onChange(updated);
-
-    setTimeout(() => {
-      textarea.focus();
-      const newCursorPos = (before + prefix + textToInsert).length;
-      textarea.setSelectionRange(newCursorPos, newCursorPos);
-    }, 0);
-  };
-
-  // Toolbar Actions
-  const handleInsertHeading = (level: 2 | 3) => {
-    const prefix = level === 2 ? '## ' : '### ';
-    insertTextAtCursor(`${prefix}Judul Bagian Baru`);
-  };
-
-  const handleInsertBold = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = textarea.value.substring(start, end);
-
-    if (selectedText) {
-      const updated = textarea.value.substring(0, start) + `**${selectedText}**` + textarea.value.substring(end);
-      onChange(updated);
-    } else {
-      insertTextAtCursor('**teks tebal**');
+    // 2. If plain text has tab characters (Word or Excel table copied as plain text)
+    if (text && text.includes('\t') && text.includes('\n')) {
+      const tableHtml = convertTabsToHtmlTable(text);
+      if (tableHtml) {
+        e.preventDefault();
+        document.execCommand('insertHTML', false, tableHtml);
+        handleInput();
+        showToast('✨ Format Tabel Terdeteksi: Tabel berhasil dibuat dan ditempel secara visual!');
+        return;
+      }
     }
+
+    // 3. Normal text paste
+    showToast('Teks berhasil ditempel ke dalam editor.');
   };
 
-  const handleInsertItalic = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = textarea.value.substring(start, end);
-
-    if (selectedText) {
-      const updated = textarea.value.substring(0, start) + `*${selectedText}*` + textarea.value.substring(end);
-      onChange(updated);
-    } else {
-      insertTextAtCursor('*teks miring*');
-    }
+  // Formatting commands
+  const executeCommand = (command: string, arg: string | undefined = undefined) => {
+    document.execCommand(command, false, arg);
+    editorRef.current?.focus();
+    handleInput();
   };
 
-  const handleInsertList = () => {
-    insertTextAtCursor('- Poin pertama\n- Poin kedua\n- Poin ketiga');
-  };
-
-  const handleInsertQuote = () => {
-    insertTextAtCursor('> Tulis kutipan penting atau catatan khusus editorial di sini...');
-  };
-
+  // Insert a fresh visual 3x3 table directly into editor
   const handleInsertTable = () => {
-    const sampleTable = `| Aspek / Fitur | Spesifikasi | Keterangan |
-|---|---|---|
-| Resolusi Sensor | 40.2 MP X-Trans CMOS | Detail sangat tajam untuk cropping |
-| Sistem Autofokus | AI Subject Detection | Cepat mengunci mata, hewan, & kendaraan |
-| Stabilisasi Gambar | 7.0 Stops 5-Axis IBIS | Sangat stabil untuk foto low-light |
-| Rekaman Video | 6.2K 30fps 10-bit | Kualitas produksi sinematik |`;
-    insertTextAtCursor(sampleTable);
-    showToast('Tabel format Markdown berhasil disisipkan!');
+    const tableTemplate = `
+      <table class="fujifinder-table">
+        <thead>
+          <tr>
+            <th>Fitur / Aspek</th>
+            <th>Spesifikasi</th>
+            <th>Keterangan / Pengujian</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Sensor & Resolusi</td>
+            <td>Contoh: 40.2 MP X-Trans CMOS</td>
+            <td>Detail tajam dan responsif</td>
+          </tr>
+          <tr>
+            <td>Autofokus & Tracking</td>
+            <td>AI Subject Detection</td>
+            <td>Kunci fokus mata & wajah cepat</td>
+          </tr>
+          <tr>
+            <td>Stabilisasi IBIS</td>
+            <td>7.0 Stops 5-Axis</td>
+            <td>Sangat stabil untuk kondisi low-light</td>
+          </tr>
+        </tbody>
+      </table>
+      <p><br></p>
+    `;
+    executeCommand('insertHTML', tableTemplate);
+    showToast('Tabel visual berhasil disisipkan. Anda bisa langsung mengedit isi selnya.');
   };
 
-  const handleAutoFormatAll = () => {
-    if (!value.trim()) {
-      showToast('Konten masih kosong!');
-      return;
+  // Table manipulation functions
+  const getCurrentTable = (): HTMLTableElement | null => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return null;
+    let node: Node | null = selection.anchorNode;
+    while (node && node !== editorRef.current) {
+      if (node.nodeName === 'TABLE') {
+        return node as HTMLTableElement;
+      }
+      node = node.parentNode;
     }
-    const formatted = autoFormatArticleText(value);
-    onChange(formatted);
-    showToast('✨ Seluruh paragraf dan tabel berhasil dirapikan secara otomatis!');
+    return null;
+  };
+
+  const handleAddRow = () => {
+    const table = getCurrentTable();
+    if (!table) return;
+
+    const colCount = table.rows[0]?.cells.length || 3;
+    const tbody = table.querySelector('tbody') || table;
+    const newRow = document.createElement('tr');
+
+    for (let i = 0; i < colCount; i++) {
+      const td = document.createElement('td');
+      td.innerHTML = 'Data baru...';
+      newRow.appendChild(td);
+    }
+    tbody.appendChild(newRow);
+    handleInput();
+    showToast('Baris baru berhasil ditambahkan ke tabel.');
+  };
+
+  const handleAddColumn = () => {
+    const table = getCurrentTable();
+    if (!table) return;
+
+    Array.from(table.rows).forEach((row, idx) => {
+      if (idx === 0 && row.parentElement?.tagName.toLowerCase() === 'thead') {
+        const th = document.createElement('th');
+        th.innerHTML = 'Kolom Baru';
+        row.appendChild(th);
+      } else {
+        const td = document.createElement('td');
+        td.innerHTML = '-';
+        row.appendChild(td);
+      }
+    });
+    handleInput();
+    showToast('Kolom baru berhasil ditambahkan ke tabel.');
+  };
+
+  const handleDeleteRow = () => {
+    const table = getCurrentTable();
+    if (!table) return;
+    const selection = window.getSelection();
+    let node: Node | null = selection?.anchorNode || null;
+    while (node && node !== table) {
+      if (node.nodeName === 'TR') {
+        (node as HTMLTableRowElement).remove();
+        handleInput();
+        showToast('Baris tabel berhasil dihapus.');
+        return;
+      }
+      node = node.parentNode;
+    }
+  };
+
+  const handleDeleteTable = () => {
+    const table = getCurrentTable();
+    if (table) {
+      table.remove();
+      handleInput();
+      setActiveInTable(false);
+      showToast('Tabel berhasil dihapus.');
+    }
+  };
+
+  // Auto clean formatting across editor
+  const handleAutoFormat = () => {
+    if (!editorRef.current) return;
+    const currentHtml = editorRef.current.innerHTML;
+    const cleaned = cleanWordHtml(currentHtml);
+    editorRef.current.innerHTML = cleaned;
+    handleInput();
+    showToast('✨ Format dokumen & tabel berhasil dirapikan secara menyeluruh!');
   };
 
   return (
-    <div className="rounded-2xl border border-neutral-300 bg-white overflow-hidden shadow-2xs transition-all focus-within:border-neutral-900 focus-within:ring-2 focus-within:ring-neutral-900/10">
-      {/* 1. Header Toolbar */}
-      <div className="bg-neutral-50/90 border-b border-neutral-200 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
-        {/* Formatting Buttons */}
+    <div className="w-full flex flex-col rounded-2xl border border-neutral-300 bg-white overflow-hidden shadow-xs">
+      {/* Top Banner Notice for User */}
+      <div className="bg-neutral-900 text-white px-4 py-2.5 flex items-center justify-between text-xs border-b border-neutral-800">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+          <span className="font-semibold">
+            Visual Word & Docs Editor: Salin teks & tabel di Word (Ctrl+C), lalu langsung Paste (Ctrl+V) di sini.
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowWordHelp(!showWordHelp)}
+          className="text-neutral-300 hover:text-white flex items-center gap-1 underline cursor-pointer text-[11px]"
+        >
+          <HelpCircle className="w-3.5 h-3.5" />
+          {showWordHelp ? 'Tutup Panduan' : 'Lihat Panduan'}
+        </button>
+      </div>
+
+      {/* Expandable Help Box */}
+      {showWordHelp && (
+        <div className="bg-amber-50/90 border-b border-amber-200 p-4 text-xs text-amber-950 animate-fadeIn">
+          <h4 className="font-bold mb-1 flex items-center gap-1.5 text-amber-900">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            Cara Menempelkan Tabel dari Microsoft Word agar Persis & Rapi:
+          </h4>
+          <ol className="list-decimal ml-5 space-y-1 text-amber-900">
+            <li>Buka dokumen Microsoft Word atau Google Docs Anda.</li>
+            <li>Sorot (blok) tulisan beserta tabel yang ingin Anda pindahkan, lalu tekan <b>Ctrl + C</b> (Copy).</li>
+            <li>Klik di dalam kotak putih editor di bawah ini, lalu tekan <b>Ctrl + V</b> (Paste).</li>
+            <li>
+              Tabel Word akan langsung muncul <b>sebagai tabel visual nyata</b> dengan garis kolom dan baris yang rapi!
+            </li>
+            <li>Anda dapat langsung mengklik di dalam sel tabel untuk mengubah tulisan atau menambahkan baris baru.</li>
+          </ol>
+        </div>
+      )}
+
+      {/* Main Interactive Toolbar */}
+      <div className="bg-neutral-100/90 border-b border-neutral-200 p-2 sm:p-2.5 flex flex-wrap items-center justify-between gap-1.5 select-none">
         <div className="flex flex-wrap items-center gap-1">
-          <button
-            type="button"
-            onClick={() => handleInsertHeading(2)}
-            className="p-1.5 rounded-lg hover:bg-neutral-200/80 text-neutral-700 hover:text-neutral-950 transition-colors flex items-center gap-1 text-xs font-semibold"
-            title="Judul Bagian (H2)"
-          >
-            <Heading2 className="w-4 h-4" />
-            <span className="hidden sm:inline">H2</span>
-          </button>
+          {/* Headings */}
+          <div className="flex items-center bg-white rounded-lg border border-neutral-200 shadow-2xs p-0.5">
+            <button
+              type="button"
+              onClick={() => executeCommand('formatBlock', 'h2')}
+              title="Heading 2 (Judul Bagian)"
+              className="px-2.5 py-1 text-xs font-bold rounded-md hover:bg-neutral-100 text-neutral-800 cursor-pointer flex items-center gap-1"
+            >
+              <Heading2 className="w-3.5 h-3.5" />
+              <span>H2</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => executeCommand('formatBlock', 'h3')}
+              title="Heading 3 (Sub-Judul)"
+              className="px-2.5 py-1 text-xs font-bold rounded-md hover:bg-neutral-100 text-neutral-800 cursor-pointer flex items-center gap-1"
+            >
+              <Heading3 className="w-3.5 h-3.5" />
+              <span>H3</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => executeCommand('formatBlock', 'p')}
+              title="Paragraf Normal"
+              className="px-2 py-1 text-xs font-medium rounded-md hover:bg-neutral-100 text-neutral-700 cursor-pointer"
+            >
+              Teks
+            </button>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => handleInsertHeading(3)}
-            className="p-1.5 rounded-lg hover:bg-neutral-200/80 text-neutral-700 hover:text-neutral-950 transition-colors flex items-center gap-1 text-xs font-semibold"
-            title="Sub-judul (H3)"
-          >
-            <Heading3 className="w-4 h-4" />
-            <span className="hidden sm:inline">H3</span>
-          </button>
+          <div className="h-5 w-px bg-neutral-300 mx-0.5" />
 
-          <span className="w-px h-5 bg-neutral-300 mx-1" />
+          {/* Text Styling */}
+          <div className="flex items-center bg-white rounded-lg border border-neutral-200 shadow-2xs p-0.5">
+            <button
+              type="button"
+              onClick={() => executeCommand('bold')}
+              title="Tebal (Bold)"
+              className="p-1.5 rounded-md hover:bg-neutral-100 text-neutral-800 cursor-pointer"
+            >
+              <Bold className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => executeCommand('italic')}
+              title="Miring (Italic)"
+              className="p-1.5 rounded-md hover:bg-neutral-100 text-neutral-800 cursor-pointer"
+            >
+              <Italic className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => executeCommand('underline')}
+              title="Garis Bawah (Underline)"
+              className="p-1.5 rounded-md hover:bg-neutral-100 text-neutral-800 cursor-pointer"
+            >
+              <Underline className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
-          <button
-            type="button"
-            onClick={handleInsertBold}
-            className="p-1.5 rounded-lg hover:bg-neutral-200/80 text-neutral-700 hover:text-neutral-950 transition-colors text-xs font-bold"
-            title="Tebal (Bold)"
-          >
-            <Bold className="w-4 h-4" />
-          </button>
+          <div className="h-5 w-px bg-neutral-300 mx-0.5" />
 
-          <button
-            type="button"
-            onClick={handleInsertItalic}
-            className="p-1.5 rounded-lg hover:bg-neutral-200/80 text-neutral-700 hover:text-neutral-950 transition-colors text-xs italic"
-            title="Miring (Italic)"
-          >
-            <Italic className="w-4 h-4" />
-          </button>
+          {/* Lists & Quotes */}
+          <div className="flex items-center bg-white rounded-lg border border-neutral-200 shadow-2xs p-0.5">
+            <button
+              type="button"
+              onClick={() => executeCommand('insertUnorderedList')}
+              title="Daftar Poin (Bullet List)"
+              className="p-1.5 rounded-md hover:bg-neutral-100 text-neutral-800 cursor-pointer"
+            >
+              <List className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => executeCommand('insertOrderedList')}
+              title="Daftar Angka (Numbered List)"
+              className="p-1.5 rounded-md hover:bg-neutral-100 text-neutral-800 cursor-pointer"
+            >
+              <ListOrdered className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => executeCommand('formatBlock', 'blockquote')}
+              title="Kutipan (Quote)"
+              className="p-1.5 rounded-md hover:bg-neutral-100 text-neutral-800 cursor-pointer"
+            >
+              <Quote className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
-          <button
-            type="button"
-            onClick={handleInsertList}
-            className="p-1.5 rounded-lg hover:bg-neutral-200/80 text-neutral-700 hover:text-neutral-950 transition-colors text-xs"
-            title="Daftar Poin (List)"
-          >
-            <List className="w-4 h-4" />
-          </button>
+          <div className="h-5 w-px bg-neutral-300 mx-0.5" />
 
-          <button
-            type="button"
-            onClick={handleInsertQuote}
-            className="p-1.5 rounded-lg hover:bg-neutral-200/80 text-neutral-700 hover:text-neutral-950 transition-colors text-xs"
-            title="Kutipan (Quote)"
-          >
-            <Quote className="w-4 h-4" />
-          </button>
-
-          <span className="w-px h-5 bg-neutral-300 mx-1" />
-
-          {/* Table insertion */}
+          {/* Insert Table Button */}
           <button
             type="button"
             onClick={handleInsertTable}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-neutral-300 hover:bg-neutral-100 text-neutral-800 transition-colors text-xs font-semibold shadow-2xs"
-            title="Sisipkan Tabel Rapi"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 shadow-2xs cursor-pointer transition-colors"
+            title="Sisipkan Tabel Visual Baru"
           >
-            <TableIcon className="w-3.5 h-3.5 text-neutral-700" />
-            <span>+ Tabel</span>
+            <TableIcon className="w-3.5 h-3.5 text-amber-400" />
+            <span>+ Sisipkan Tabel</span>
           </button>
 
-          {/* Auto Format / Fix Paragraphs */}
+          {/* Auto Format / Clean Word button */}
           <button
             type="button"
-            onClick={handleAutoFormatAll}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-white transition-colors text-xs font-semibold shadow-2xs"
-            title="Rapikan Spasi & Paragraf yang Menggumpal"
+            onClick={handleAutoFormat}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-white border border-neutral-300 text-neutral-800 hover:bg-neutral-50 cursor-pointer shadow-2xs"
+            title="Rapikan spasi, baris, dan format tabel secara otomatis"
           >
-            <Wand2 className="w-3.5 h-3.5 text-amber-300" />
-            <span className="hidden sm:inline">Rapikan Paragraf</span>
+            <Wand2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Rapikan Format</span>
           </button>
         </div>
 
-        {/* Right side: Tabs (Edit vs Preview) & Help */}
-        <div className="flex items-center gap-1.5">
+        {/* View Mode Toggle */}
+        <div className="flex items-center bg-white rounded-lg border border-neutral-200 p-0.5 shadow-2xs">
           <button
             type="button"
-            onClick={() => setShowWordHelp(!showWordHelp)}
-            className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-900 transition-colors"
-            title="Panduan Copy-Paste dari Word"
+            onClick={() => setViewMode('visual')}
+            className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1 transition-all ${
+              viewMode === 'visual'
+                ? 'bg-neutral-900 text-white shadow-2xs'
+                : 'text-neutral-600 hover:bg-neutral-100'
+            }`}
           >
-            <HelpCircle className="w-4 h-4" />
+            <Eye className="w-3 h-3" />
+            <span>Visual</span>
           </button>
-
-          <div className="inline-flex rounded-xl bg-neutral-200/80 p-0.5 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setActiveTab('edit')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all ${
-                activeTab === 'edit'
-                  ? 'bg-white text-neutral-900 shadow-xs'
-                  : 'text-neutral-600 hover:text-neutral-900'
-              }`}
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>Editor</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('preview')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all ${
-                activeTab === 'preview'
-                  ? 'bg-white text-neutral-900 shadow-xs'
-                  : 'text-neutral-600 hover:text-neutral-900'
-              }`}
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span>Pratinjau Hasil</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setViewMode('code')}
+            className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1 transition-all ${
+              viewMode === 'code'
+                ? 'bg-neutral-900 text-white shadow-2xs'
+                : 'text-neutral-600 hover:bg-neutral-100'
+            }`}
+          >
+            <Code className="w-3 h-3" />
+            <span>HTML</span>
+          </button>
         </div>
       </div>
 
-      {/* Word Help Banner */}
-      {showWordHelp && (
-        <div className="bg-amber-50 border-b border-amber-200 p-3 text-xs text-amber-900 flex items-start gap-2.5">
-          <FileText className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <p className="font-bold">Tips Copy-Paste dari Microsoft Word / Google Docs:</p>
-            <ul className="list-disc list-inside space-y-0.5 text-amber-800">
-              <li>Cukup salin (Ctrl+C) teks, tabel, dan judul dari dokumen Word, lalu langsung <strong>Paste (Ctrl+V)</strong> ke dalam editor ini.</li>
-              <li>Sistem otomatis mendeteksi struktur tabel, heading (H2/H3), teks tebal, dan memisahkan setiap paragraf secara rapi.</li>
-              <li>Jika paragraf masih tampak menggumpal, klik tombol <strong>"Rapikan Paragraf"</strong> di atas.</li>
-              <li>Beralih ke tab <strong>"Pratinjau Hasil"</strong> untuk melihat tampilan akhir artikel persis seperti yang tampil di website.</li>
-            </ul>
+      {/* Contextual Table Tools (Visible when cursor or click is inside a table) */}
+      {activeInTable && (
+        <div className="bg-emerald-50 border-b border-emerald-200 px-3 py-1.5 flex flex-wrap items-center justify-between text-xs text-emerald-950 animate-fadeIn">
+          <div className="flex items-center gap-1.5 font-bold text-emerald-900">
+            <TableIcon className="w-3.5 h-3.5 text-emerald-700" />
+            <span>Alat Pengedit Tabel Aktif:</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handleAddRow}
+              className="px-2 py-0.5 bg-white border border-emerald-300 hover:bg-emerald-100 rounded text-emerald-900 flex items-center gap-1 font-semibold cursor-pointer"
+            >
+              <Rows className="w-3 h-3" />
+              + Baris
+            </button>
+            <button
+              type="button"
+              onClick={handleAddColumn}
+              className="px-2 py-0.5 bg-white border border-emerald-300 hover:bg-emerald-100 rounded text-emerald-900 flex items-center gap-1 font-semibold cursor-pointer"
+            >
+              <Columns className="w-3 h-3" />
+              + Kolom
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteRow}
+              className="px-2 py-0.5 bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 rounded flex items-center gap-1 font-semibold cursor-pointer"
+            >
+              <Trash2 className="w-3 h-3" />
+              Hapus Baris
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteTable}
+              className="px-2 py-0.5 bg-rose-600 text-white hover:bg-rose-700 rounded flex items-center gap-1 font-semibold cursor-pointer"
+            >
+              <Trash2 className="w-3 h-3" />
+              Hapus Seluruh Tabel
+            </button>
           </div>
         </div>
       )}
 
-      {/* Toast Notification */}
+      {/* Floating Success Toast */}
       {toastMessage && (
-        <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-2 flex items-center gap-2 text-xs font-semibold text-emerald-900 animate-in fade-in duration-200">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+        <div className="bg-emerald-600 text-white px-4 py-2 text-xs font-semibold flex items-center gap-2 animate-fadeIn shadow-md">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* 2. Main Content Area */}
-      {activeTab === 'edit' ? (
-        <div className="p-3">
-          <textarea
-            ref={textareaRef}
-            rows={12}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onPaste={handlePaste}
-            placeholder={placeholder}
-            className="w-full text-sm leading-relaxed p-3 rounded-xl border-0 bg-transparent focus:outline-none font-sans text-neutral-900 resize-y min-h-[260px] placeholder:text-neutral-400"
-          />
-          <div className="pt-2 border-t border-neutral-100 flex items-center justify-between text-[11px] text-neutral-500">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Dukungan otomatis: Salin dari Word (paragraf, tabel, bullet points, & heading tetap rapi).</span>
-            </div>
-            <div>{value.trim().split(/\s+/).filter(Boolean).length} kata</div>
-          </div>
-        </div>
+      {/* Visual ContentEditable Area */}
+      {viewMode === 'visual' ? (
+        <div
+          ref={editorRef}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={handleInput}
+          onPaste={handlePaste}
+          onKeyUp={checkCursorPosition}
+          onClick={checkCursorPosition}
+          data-placeholder={placeholder}
+          className="fujifinder-visual-editor min-h-[380px] max-h-[600px] overflow-y-auto p-5 sm:p-7 bg-white text-neutral-800 text-base leading-relaxed focus:outline-none cursor-text relative"
+        />
       ) : (
-        <div className="p-6 bg-neutral-50/50 min-h-[260px] max-h-[500px] overflow-y-auto">
-          <div className="max-w-2xl mx-auto bg-white p-6 rounded-2xl border border-neutral-200 shadow-xs">
-            <div className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-4 pb-2 border-b border-neutral-100">
-              Pratinjau Tampilan Pembaca Website
-            </div>
-            <ArticleContentRenderer content={value} />
-          </div>
-        </div>
+        /* Raw HTML inspection mode if needed */
+        <textarea
+          rows={16}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full min-h-[380px] p-4 text-xs font-mono bg-neutral-900 text-neutral-100 focus:outline-none"
+        />
       )}
+
+      {/* Footer Info & Stats */}
+      <div className="bg-neutral-50 px-4 py-2 border-t border-neutral-200 flex flex-wrap items-center justify-between text-[11px] text-neutral-500">
+        <div className="flex items-center gap-4">
+          <span>{stats.words} kata</span>
+          <span>•</span>
+          <span className={stats.tables > 0 ? 'text-emerald-700 font-bold' : ''}>
+            {stats.tables} tabel terpasang
+          </span>
+        </div>
+        <div className="text-neutral-400">
+          Format tersimpan otomatis sesuai dokumen Word & Docs Anda
+        </div>
+      </div>
     </div>
   );
 };
