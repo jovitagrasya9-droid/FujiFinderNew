@@ -23,6 +23,29 @@ const DEFAULT_SITE_DESC =
 const DEFAULT_OG_IMAGE =
   'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=1200&q=80';
 
+export const PRODUCTION_CANONICAL_HOST = 'https://www.fujifinder.my.id';
+
+/**
+ * Returns canonical origin, standardizing to https://www.fujifinder.my.id on production
+ */
+export function getCanonicalOrigin(baseUrl?: string): string {
+  if (baseUrl) return baseUrl;
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host.includes('.run.app') ||
+      host.includes('.vercel.app') ||
+      host.includes('.netlify.app')
+    ) {
+      return window.location.origin;
+    }
+    return PRODUCTION_CANONICAL_HOST;
+  }
+  return PRODUCTION_CANONICAL_HOST;
+}
+
 /**
  * Sets or updates a <meta> tag in the document head
  */
@@ -157,7 +180,7 @@ export function updateDocumentSEO(config: Partial<SEOConfig>) {
  * Convenience helper specifically for Article objects
  */
 export function setArticleSEO(article: Article, baseUrl?: string) {
-  const origin = baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+  const origin = getCanonicalOrigin(baseUrl);
   const publicUrl = `${origin}/artikel/${article.slug}`;
 
   updateDocumentSEO({

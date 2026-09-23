@@ -292,13 +292,16 @@ export async function getArticlesFromSupabase(): Promise<{ data: Article[] | nul
 
 export async function getArticleBySlugFromSupabase(slug: string): Promise<{ data: Article | null; error: any }> {
   try {
+    const cleanSlug = slug.trim();
     const { data, error } = await supabase
       .from('articles')
       .select('*')
-      .eq('slug', slug)
-      .single();
+      .or(`slug.eq.${cleanSlug},id.eq.${cleanSlug}`)
+      .limit(1)
+      .maybeSingle();
 
     if (error) return { data: null, error };
+    if (!data) return { data: null, error: null };
     return { data: mapRowToArticle(data), error: null };
   } catch (err) {
     return { data: null, error: err };
