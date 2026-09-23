@@ -1,12 +1,16 @@
+# FujiFinder Robots.txt
+# https://www.fujifinder.my.id
+
 User-agent: *
 Allow: /
 Allow: /artikel/
 Allow: /kamera
-Allow: /ulasan
-Allow: /panduan
-Allow: /jurnal
-Disallow: /#cms
+Allow: /reviews
+Allow: /guides
+Allow: /blog
 Disallow: /admin
+Disallow: /#cms
+Disallow: /api/
 
-# Dynamic Sitemap Reference
-Sitemap: https://fujifinder.app/sitemap.xml
+# Canonical XML Sitemap
+Sitemap: https://www.fujifinder.my.id/sitemap.xml

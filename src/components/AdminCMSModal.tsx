@@ -41,7 +41,13 @@ import { ArticleRichEditor } from './ArticleRichEditor';
 import { ArticleContentRenderer } from './ArticleContentRenderer';
 import { formatIDR } from '../utils/formatCurrency';
 import { generateSlug, checkSEOReadiness } from '../utils/seoManager';
-import { generateSitemapXml, downloadSitemap } from '../utils/sitemapGenerator';
+import {
+  generateSitemapXml,
+  downloadSitemap,
+  CANONICAL_SITE_URL,
+  STATIC_PUBLIC_ROUTES,
+  formatIsoLastMod,
+} from '../utils/sitemapGenerator';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, checkSupabaseConnection } from '../lib/supabase';
 import {
   SUPABASE_SQL_SCHEMA,
@@ -164,7 +170,12 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
   // ==========================================
   // CMS TABS & GENERAL STATE
   // ==========================================
-  const [activeTab, setActiveTab] = useState<'articles' | 'cameras' | 'authors' | 'subscribers' | 'database'>('articles');
+  const [activeTab, setActiveTab] = useState<'articles' | 'cameras' | 'authors' | 'subscribers' | 'database' | 'sitemap'>('articles');
+
+  // Sitemap Management State
+  const [copiedSitemapUrl, setCopiedSitemapUrl] = useState(false);
+  const [copiedSitemapXml, setCopiedSitemapXml] = useState(false);
+  const [sitemapSearchQuery, setSitemapSearchQuery] = useState('');
 
   // Supabase Database Connection & Sync State
   const [supabaseStatus, setSupabaseStatus] = useState<'unknown' | 'testing' | 'connected' | 'error'>('unknown');
@@ -1059,6 +1070,21 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
                 <span className={`w-2 h-2 rounded-full ${
                   supabaseStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : supabaseStatus === 'testing' ? 'bg-amber-500 animate-ping' : 'bg-neutral-400'
                 }`} />
+              </button>
+
+              <button
+                onClick={() => setActiveTab('sitemap')}
+                className={`py-3.5 px-4 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
+                  activeTab === 'sitemap'
+                    ? 'border-neutral-950 text-neutral-950 font-bold'
+                    : 'border-transparent text-neutral-500 hover:text-neutral-950'
+                }`}
+              >
+                <Globe className="w-4 h-4 text-neutral-800" />
+                <span>XML Sitemap & SEO</span>
+                <span className="text-[10px] px-1.5 py-0.5 bg-neutral-200 text-neutral-800 rounded-full font-bold">
+                  {articles.filter((a) => a.status !== 'draft').length + 5} URLs
+                </span>
               </button>
             </div>
 
@@ -2674,6 +2700,284 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* ========================================================================= */}
+              {/* TAB 6: XML SITEMAP & GOOGLE SEARCH CONSOLE */}
+              {/* ========================================================================= */}
+              {activeTab === 'sitemap' && (
+                <div className="space-y-6">
+                  {/* Top Header Card */}
+                  <div className="p-5 sm:p-6 rounded-2xl bg-neutral-900 text-white border border-neutral-800 shadow-xl space-y-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            <Globe className="w-5 h-5" />
+                          </span>
+                          <div>
+                            <h3 className="text-base sm:text-lg font-black tracking-tight">
+                              XML Sitemap & Google Indexing
+                            </h3>
+                            <p className="text-xs text-neutral-400 font-mono">
+                              {CANONICAL_SITE_URL}/sitemap.xml
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Quick Action Buttons */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${CANONICAL_SITE_URL}/sitemap.xml`);
+                            setCopiedSitemapUrl(true);
+                            setTimeout(() => setCopiedSitemapUrl(false), 2000);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 cursor-pointer transition-all"
+                        >
+                          {copiedSitemapUrl ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-emerald-400" />
+                              <span className="text-emerald-400">URL Tersalin!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5" />
+                              <span>Salin URL Sitemap</span>
+                            </>
+                          )}
+                        </button>
+
+                        <a
+                          href="/sitemap.xml"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer transition-all shadow-md"
+                        >
+                          <span>Buka /sitemap.xml</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+
+                        <button
+                          type="button"
+                          onClick={() => downloadSitemap(articles)}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-neutral-900 hover:bg-neutral-100 cursor-pointer transition-all"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Unduh XML</span>
+                        </button>
+
+                        <a
+                          href="https://search.google.com/search-console/sitemaps"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer transition-all shadow-md"
+                        >
+                          <span>Google Search Console</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Stats Metric Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-neutral-800">
+                      <div className="p-3 rounded-xl bg-neutral-950/60 border border-neutral-800">
+                        <span className="text-[11px] font-medium text-neutral-400 block">Total Indexable URLs</span>
+                        <span className="text-lg sm:text-xl font-black text-white">
+                          {STATIC_PUBLIC_ROUTES.length + articles.filter((a) => a.status !== 'draft').length}
+                        </span>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-neutral-950/60 border border-neutral-800">
+                        <span className="text-[11px] font-medium text-neutral-400 block">Artikel Terindeks</span>
+                        <span className="text-lg sm:text-xl font-black text-emerald-400">
+                          {articles.filter((a) => a.status !== 'draft').length}
+                        </span>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-neutral-950/60 border border-neutral-800">
+                        <span className="text-[11px] font-medium text-neutral-400 block">Draft / Dikecualikan</span>
+                        <span className="text-lg sm:text-xl font-black text-amber-400">
+                          {articles.filter((a) => a.status === 'draft').length}
+                        </span>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-neutral-950/60 border border-neutral-800">
+                        <span className="text-[11px] font-medium text-neutral-400 block">Protokol Standard</span>
+                        <span className="text-xs sm:text-sm font-bold text-neutral-200 mt-1 block">
+                          sitemaps.org 0.9
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Search & URL Table Section */}
+                  <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden space-y-4 p-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-neutral-100">
+                      <div>
+                        <h4 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
+                          <FileCode className="w-4 h-4 text-neutral-600" />
+                          <span>Daftar URL yang Terdaftar di Sitemap XML</span>
+                        </h4>
+                        <p className="text-xs text-neutral-500">
+                          Halaman berikut akan otomatis dirayapi (crawled) dan diindeks oleh Googlebot & Bingbot.
+                        </p>
+                      </div>
+
+                      <div className="relative w-full sm:w-64">
+                        <input
+                          type="text"
+                          value={sitemapSearchQuery}
+                          onChange={(e) => setSitemapSearchQuery(e.target.value)}
+                          placeholder="Cari URL / Slug artikel..."
+                          className="w-full text-xs pl-8 pr-3 py-2 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white focus:outline-none focus:border-neutral-900 transition-all"
+                        />
+                        <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      </div>
+                    </div>
+
+                    {/* URLs Table */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="border-b border-neutral-200 bg-neutral-50 text-neutral-600 font-semibold">
+                            <th className="py-2.5 px-3">Tipe</th>
+                            <th className="py-2.5 px-3">Canonical URL</th>
+                            <th className="py-2.5 px-3">Lastmod</th>
+                            <th className="py-2.5 px-3">Changefreq</th>
+                            <th className="py-2.5 px-3">Priority</th>
+                            <th className="py-2.5 px-3 text-right">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-neutral-100 font-mono text-[11px]">
+                          {/* Static Routes */}
+                          {STATIC_PUBLIC_ROUTES.filter((r) =>
+                            !sitemapSearchQuery ||
+                            r.path.toLowerCase().includes(sitemapSearchQuery.toLowerCase()) ||
+                            r.title.toLowerCase().includes(sitemapSearchQuery.toLowerCase())
+                          ).map((route) => (
+                            <tr key={route.path} className="hover:bg-neutral-50/80 transition-colors">
+                              <td className="py-2.5 px-3 font-sans">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-neutral-100 text-neutral-700">
+                                  Halaman Inti
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-neutral-900 font-semibold break-all">
+                                {CANONICAL_SITE_URL}{route.path}
+                              </td>
+                              <td className="py-2.5 px-3 text-neutral-500 font-sans">
+                                {new Date().toISOString().split('T')[0]}
+                              </td>
+                              <td className="py-2.5 px-3 text-neutral-500 font-sans">{route.changefreq}</td>
+                              <td className="py-2.5 px-3">
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold">
+                                  {route.priority}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-sans">
+                                <a
+                                  href={route.path}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-neutral-600 hover:text-neutral-950 font-medium"
+                                >
+                                  <span>Buka</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              </td>
+                            </tr>
+                          ))}
+
+                          {/* Published Articles */}
+                          {articles
+                            .filter((a) => a.status !== 'draft')
+                            .filter(
+                              (a) =>
+                                !sitemapSearchQuery ||
+                                a.slug.toLowerCase().includes(sitemapSearchQuery.toLowerCase()) ||
+                                a.title.toLowerCase().includes(sitemapSearchQuery.toLowerCase())
+                            )
+                            .map((art) => {
+                              const lastmod = formatIsoLastMod(art.dateModified || art.date);
+                              const fullUrl = `${CANONICAL_SITE_URL}/artikel/${art.slug}`;
+                              return (
+                                <tr key={art.id} className="hover:bg-neutral-50/80 transition-colors">
+                                  <td className="py-2.5 px-3 font-sans">
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700">
+                                      Artikel {art.featured ? '⭐' : ''}
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-neutral-900 break-all">
+                                    <div className="font-sans font-bold text-neutral-900 text-xs mb-0.5 line-clamp-1">
+                                      {art.title}
+                                    </div>
+                                    <span className="text-[10px] text-neutral-500 font-mono">{fullUrl}</span>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-neutral-600 font-sans">{lastmod}</td>
+                                  <td className="py-2.5 px-3 text-neutral-500 font-sans">weekly</td>
+                                  <td className="py-2.5 px-3">
+                                    <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-bold">
+                                      {art.featured ? '0.9' : '0.8'}
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right font-sans">
+                                    <a
+                                      href={`/artikel/${art.slug}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-900 font-medium"
+                                    >
+                                      <span>Buka</span>
+                                      <ExternalLink className="w-3 h-3" />
+                                    </a>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Raw Live XML Output Viewer */}
+                  <div className="bg-neutral-900 rounded-2xl p-5 border border-neutral-800 space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-neutral-800 text-white">
+                      <div className="flex items-center gap-2">
+                        <FileCode className="w-4 h-4 text-emerald-400" />
+                        <span className="text-xs font-bold font-mono">Live Generated XML (sitemaps.org / Googlebot)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const xml = generateSitemapXml(articles);
+                          navigator.clipboard.writeText(xml);
+                          setCopiedSitemapXml(true);
+                          setTimeout(() => setCopiedSitemapXml(false), 2000);
+                        }}
+                        className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 cursor-pointer transition-all"
+                      >
+                        {copiedSitemapXml ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="text-emerald-400">XML Tersalin!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Salin Semua XML</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <pre className="p-4 rounded-xl bg-neutral-950 text-emerald-300 font-mono text-[11px] overflow-x-auto max-h-72 leading-relaxed border border-neutral-800 selection:bg-emerald-900">
+                      {generateSitemapXml(articles)}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
             </div>
 
             {/* Quick Article Preview Modal inside CMS */}

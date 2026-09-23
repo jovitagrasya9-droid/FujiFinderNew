@@ -126,6 +126,16 @@ export const Footer: React.FC<FooterProps> = ({
                 <span className="cursor-default">Affiliate Disclosure</span>
               </li>
               <li>
+                <a
+                  href="/sitemap.xml"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-neutral-950 transition-colors inline-flex items-center gap-1"
+                >
+                  XML Sitemap
+                </a>
+              </li>
+              <li>
                 <span className="cursor-default">Contact the Editors</span>
               </li>
               {onOpenCMS && (

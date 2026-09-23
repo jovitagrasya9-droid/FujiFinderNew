@@ -15,6 +15,7 @@ import { SearchModal } from './components/SearchModal';
 import { AdminCMSModal } from './components/AdminCMSModal';
 import { PublicArticleView } from './components/PublicArticleView';
 import { NotFoundView } from './components/NotFoundView';
+import { SitemapXmlView } from './components/SitemapXmlView';
 
 import { CameraCatalogView } from './components/CameraCatalogView';
 import { ReviewsView } from './components/ReviewsView';
@@ -153,6 +154,9 @@ export default function App() {
     if (pathname === '/blog') {
       return { view: 'blog' };
     }
+    if (pathname === '/sitemap.xml' || pathname === '/sitemap') {
+      return { view: 'sitemap' };
+    }
 
     return { view: 'home' };
   }, []);
@@ -242,6 +246,11 @@ export default function App() {
         setIsLoadingRoute(false);
       } else if (route.view === 'blog') {
         setCurrentView('blog');
+        setPublicArticle(null);
+        setRouteNotFoundSlug(null);
+        setIsLoadingRoute(false);
+      } else if (route.view === 'sitemap') {
+        setCurrentView('sitemap');
         setPublicArticle(null);
         setRouteNotFoundSlug(null);
         setIsLoadingRoute(false);
@@ -614,6 +623,14 @@ export default function App() {
             />
             <NewsletterSection />
           </>
+        )}
+
+        {/* XML Sitemap Viewer */}
+        {!isLoadingRoute && currentView === 'sitemap' && (
+          <SitemapXmlView
+            articles={publishedArticles}
+            onBackToHome={() => handleNavigate('home')}
+          />
         )}
       </main>
 
