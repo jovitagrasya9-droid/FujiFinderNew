@@ -290,6 +290,21 @@ export async function getArticlesFromSupabase(): Promise<{ data: Article[] | nul
   }
 }
 
+export async function getArticleBySlugFromSupabase(slug: string): Promise<{ data: Article | null; error: any }> {
+  try {
+    const { data, error } = await supabase
+      .from('articles')
+      .select('*')
+      .eq('slug', slug)
+      .single();
+
+    if (error) return { data: null, error };
+    return { data: mapRowToArticle(data), error: null };
+  } catch (err) {
+    return { data: null, error: err };
+  }
+}
+
 export async function upsertArticleInSupabase(article: Article): Promise<{ success: boolean; error: any }> {
   try {
     const row = mapArticleToRow(article);

@@ -25,6 +25,7 @@ import { FUJIFILM_STARTER_CAMERAS, FUJIFILM_STARTER_ARTICLES, DEFAULT_AUTHOR } f
 import { trackPageView, trackEvent } from './utils/analytics';
 import {
   getArticlesFromSupabase,
+  getArticleBySlugFromSupabase,
   upsertArticleInSupabase,
   deleteArticleFromSupabase,
   getCamerasFromSupabase,
@@ -110,7 +111,9 @@ export default function App() {
 
   // Handle URL Routing for /artikel/:slug or query/hash
   useEffect(() => {
-    const handleUrlRouting = () => {
+    let isCancelled = false;
+
+    const handleUrlRouting = async () => {
       const path = window.location.pathname;
       const hash = window.location.hash;
 
@@ -121,7 +124,10 @@ export default function App() {
         slug = decodeURIComponent(hash.replace('#/artikel/', ''));
       }
 
-      if (slug && articles.length > 0) {
+      if (!slug) return;
+
+      // 1. Check in loaded state
+      if (articles.length > 0) {
         const found = articles.find((a) => a.slug === slug || a.id === slug);
         if (found) {
           setPublicArticle(found);
@@ -129,11 +135,33 @@ export default function App() {
           return;
         }
       }
+
+      // 2. Fetch directly from Supabase by slug
+      try {
+        const { data: remoteArticle } = await getArticleBySlugFromSupabase(slug);
+        if (remoteArticle && !isCancelled) {
+          setPublicArticle(remoteArticle);
+          setCurrentView('public-article');
+          return;
+        }
+      } catch (e) {
+        console.warn('Slug lookup error:', e);
+      }
+
+      // 3. Check fallback starter articles
+      const starterFound = FUJIFILM_STARTER_ARTICLES.find((a) => a.slug === slug || a.id === slug);
+      if (starterFound && !isCancelled) {
+        setPublicArticle(starterFound);
+        setCurrentView('public-article');
+      }
     };
 
     handleUrlRouting();
     window.addEventListener('popstate', handleUrlRouting);
-    return () => window.removeEventListener('popstate', handleUrlRouting);
+    return () => {
+      isCancelled = true;
+      window.removeEventListener('popstate', handleUrlRouting);
+    };
   }, [articles]);
 
   // Track SPA pageviews in Google Analytics
