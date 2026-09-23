@@ -3,14 +3,16 @@
 
 User-agent: *
 Allow: /
+Allow: /sitemap.xml
+Allow: /robots.txt
 Allow: /artikel/
 Allow: /kamera
 Allow: /reviews
 Allow: /guides
 Allow: /blog
+
 Disallow: /admin
 Disallow: /#cms
-Disallow: /api/
 
 # Canonical XML Sitemap
 Sitemap: https://www.fujifinder.my.id/sitemap.xml
