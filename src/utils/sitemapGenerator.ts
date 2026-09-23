@@ -45,44 +45,72 @@ export const STATIC_PUBLIC_ROUTES: StaticRouteConfig[] = [
 ];
 
 /**
- * Normalizes any date string (ISO, timestamp, or Indonesian/English text) to standard YYYY-MM-DD
+ * Normalizes any date string (ISO, timestamp, or Indonesian/English text) to standard W3C YYYY-MM-DD
+ * Ensures invalid formats like "Sep 2024" are strictly converted to valid ISO dates (e.g. "2024-09-01")
  */
 export function formatIsoLastMod(dateStr?: string): string {
-  if (!dateStr || !dateStr.trim()) {
-    return new Date().toISOString().split('T')[0];
+  const fallbackToday = new Date().toISOString().split('T')[0];
+
+  if (!dateStr || typeof dateStr !== 'string' || !dateStr.trim()) {
+    return fallbackToday;
   }
 
-  // Already standard YYYY-MM-DD or ISO
-  if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
-    return dateStr.split('T')[0];
+  const clean = dateStr.trim();
+
+  // 1. Direct match for standard YYYY-MM-DD or ISO 8601 string
+  const isoMatch = clean.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const year = parseInt(isoMatch[1], 10);
+    const month = parseInt(isoMatch[2], 10);
+    const day = parseInt(isoMatch[3], 10);
+    if (year >= 1990 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+    }
   }
 
-  // Try standard Date parsing
-  const parsed = new Date(dateStr);
-  if (!isNaN(parsed.getTime())) {
-    return parsed.toISOString().split('T')[0];
-  }
-
-  // Handle formats like "22 Sep 2026" or "Sep 2026"
+  // 2. Try parsing Indonesian / English month expressions (e.g., "Sep 2024", "Agt 2024", "22 Sep 2026")
   const months: Record<string, string> = {
-    jan: '01', feb: '02', mar: '03', apr: '04', mei: '05', may: '05',
-    jun: '06', jul: '07', agu: '08', aug: '08', sep: '09', okt: '10',
-    oct: '10', nov: '11', des: '12', dec: '12',
+    jan: '01',
+    feb: '02',
+    mar: '03',
+    apr: '04',
+    mei: '05',
+    may: '05',
+    jun: '06',
+    jul: '07',
+    agu: '08',
+    aug: '08',
+    sep: '09',
+    okt: '10',
+    oct: '10',
+    nov: '11',
+    des: '12',
+    dec: '12',
   };
 
-  const lower = dateStr.toLowerCase();
-  const yearMatch = lower.match(/\b(20\d{2})\b/);
-  const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
+  const lower = clean.toLowerCase();
+  const yearMatch = lower.match(/\b(20\d{2}|19\d{2})\b/);
+  const year = yearMatch ? yearMatch[1] : null;
 
   for (const [mName, mNum] of Object.entries(months)) {
     if (lower.includes(mName)) {
       const dayMatch = lower.match(/\b([0-2]?\d|3[01])\b/);
       const day = dayMatch ? dayMatch[1].padStart(2, '0') : '01';
-      return `${year}-${mNum}-${day}`;
+      const finalYear = year || new Date().getFullYear().toString();
+      const candidate = `${finalYear}-${mNum}-${day}`;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(candidate)) {
+        return candidate;
+      }
     }
   }
 
-  return new Date().toISOString().split('T')[0];
+  // 3. Fallback to standard JavaScript Date parser
+  const parsed = new Date(clean);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().split('T')[0];
+  }
+
+  return fallbackToday;
 }
 
 /**

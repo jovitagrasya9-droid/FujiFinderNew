@@ -23,6 +23,49 @@ function escapeXml(str: string): string {
     .replace(/'/g, '&apos;');
 }
 
+function formatIsoLastMod(dateStr?: string): string {
+  const fallbackToday = new Date().toISOString().split('T')[0];
+  if (!dateStr || typeof dateStr !== 'string' || !dateStr.trim()) {
+    return fallbackToday;
+  }
+  const clean = dateStr.trim();
+  const isoMatch = clean.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const year = parseInt(isoMatch[1], 10);
+    const month = parseInt(isoMatch[2], 10);
+    const day = parseInt(isoMatch[3], 10);
+    if (year >= 1990 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+    }
+  }
+  const months: Record<string, string> = {
+    jan: '01', feb: '02', mar: '03', apr: '04', mei: '05', may: '05',
+    jun: '06', jul: '07', agu: '08', aug: '08', sep: '09', okt: '10',
+    oct: '10', nov: '11', des: '12', dec: '12',
+  };
+  const lower = clean.toLowerCase();
+  const yearMatch = lower.match(/\b(20\d{2}|19\d{2})\b/);
+  const year = yearMatch ? yearMatch[1] : null;
+
+  for (const [mName, mNum] of Object.entries(months)) {
+    if (lower.includes(mName)) {
+      const dayMatch = lower.match(/\b([0-2]?\d|3[01])\b/);
+      const day = dayMatch ? dayMatch[1].padStart(2, '0') : '01';
+      const finalYear = year || new Date().getFullYear().toString();
+      const candidate = `${finalYear}-${mNum}-${day}`;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(candidate)) {
+        return candidate;
+      }
+    }
+  }
+
+  const parsed = new Date(clean);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().split('T')[0];
+  }
+  return fallbackToday;
+}
+
 function sitemapPlugin(): Plugin {
   return {
     name: 'vite-plugin-sitemap',
@@ -59,7 +102,7 @@ function sitemapPlugin(): Plugin {
               seen.add(slug);
 
               const loc = `${domain}/artikel/${slug}`;
-              const lastmod = art.date_modified ? art.date_modified.split('T')[0] : (art.date || todayIso);
+              const lastmod = formatIsoLastMod(art.date_modified || art.date);
               const priority = art.featured ? '0.9' : '0.8';
 
               let imgTag = '';
