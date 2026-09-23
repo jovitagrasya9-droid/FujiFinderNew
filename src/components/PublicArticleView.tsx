@@ -77,7 +77,7 @@ export const PublicArticleView: React.FC<PublicArticleViewProps> = ({
       id={`article-page-${article.slug}`}
       itemScope
       itemType="https://schema.org/Article"
-      className="pt-24 pb-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8"
+      className="pt-20 sm:pt-24 pb-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 w-full overflow-hidden"
     >
       {/* 1. SEO Breadcrumbs */}
       <nav aria-label="Breadcrumb" className="mb-6">
@@ -142,7 +142,7 @@ export const PublicArticleView: React.FC<PublicArticleViewProps> = ({
 
         <h1
           itemProp="headline"
-          className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-neutral-900 leading-[1.15]"
+          className="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-neutral-900 leading-[1.18] break-words"
         >
           {article.title}
         </h1>
@@ -150,7 +150,7 @@ export const PublicArticleView: React.FC<PublicArticleViewProps> = ({
         {article.summary && (
           <p
             itemProp="description"
-            className="text-lg sm:text-xl text-neutral-600 leading-relaxed font-normal"
+            className="text-base sm:text-lg md:text-xl text-neutral-600 leading-relaxed font-normal break-words"
           >
             {article.summary}
           </p>
@@ -168,7 +168,7 @@ export const PublicArticleView: React.FC<PublicArticleViewProps> = ({
             <img
               src={article.author.avatar}
               alt={article.author.name}
-              className="w-11 h-11 rounded-full object-cover border border-neutral-200"
+              className="w-11 h-11 rounded-full object-cover border border-neutral-200 shrink-0"
             />
             <div>
               <span
@@ -184,7 +184,7 @@ export const PublicArticleView: React.FC<PublicArticleViewProps> = ({
           </div>
 
           {/* Date, ReadTime, Actions */}
-          <div className="flex items-center gap-4 text-xs text-neutral-500">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-neutral-500">
             <div className="flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5" />
               <time itemProp="datePublished" dateTime={article.date}>
@@ -197,7 +197,7 @@ export const PublicArticleView: React.FC<PublicArticleViewProps> = ({
               <span>{article.readTime}</span>
             </div>
 
-            <div className="flex items-center gap-1.5 ml-2">
+            <div className="flex items-center gap-1.5 sm:ml-2">
               <button
                 onClick={handleShare}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-neutral-200 text-neutral-700 hover:bg-neutral-100 transition-colors cursor-pointer"
@@ -221,7 +221,7 @@ export const PublicArticleView: React.FC<PublicArticleViewProps> = ({
       </header>
 
       {/* 3. Cover Image with SEO Alt Text */}
-      <div className="relative rounded-3xl overflow-hidden bg-neutral-900 mb-10 shadow-sm">
+      <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-neutral-900 mb-8 sm:mb-10 shadow-sm">
         <img
           itemProp="image"
           src={article.coverImage}
@@ -237,7 +237,7 @@ export const PublicArticleView: React.FC<PublicArticleViewProps> = ({
       </div>
 
       {/* 4. Article Body Content */}
-      <div itemProp="articleBody" className="space-y-6 text-neutral-800 leading-relaxed">
+      <div itemProp="articleBody" className="space-y-6 text-neutral-800 leading-relaxed break-words overflow-hidden w-full">
         <ArticleContentRenderer content={article.content} />
       </div>
 

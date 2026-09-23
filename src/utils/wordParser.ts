@@ -5,7 +5,7 @@
 
 /**
  * Cleans messy Microsoft Word / Google Docs clipboard HTML into clean, beautiful semantic HTML
- * with fully styled tables, clean headings, and proper paragraph margins.
+ * with fully styled tables, clean headings, and proper responsive margins for mobile/Android.
  */
 export function cleanWordHtml(rawHtml: string): string {
   try {
@@ -23,16 +23,16 @@ export function cleanWordHtml(rawHtml: string): string {
     const doc = parser.parseFromString(sanitized, 'text/html');
     const body = doc.body;
 
-    // 1. Process all tables
-    const tables = body.querySelectorAll('table');
+    // 1. Process all tables & wrap in responsive containers
+    const tables = Array.from(body.querySelectorAll('table'));
     tables.forEach((table) => {
-      // Remove all inline Word width, border, and style attributes
+      // Remove all inline Word width, border, and style attributes that cause overflow on mobile
       table.removeAttribute('width');
       table.removeAttribute('style');
       table.removeAttribute('border');
       table.removeAttribute('cellspacing');
       table.removeAttribute('cellpadding');
-      table.className = 'fujifinder-table';
+      table.className = 'fujifinder-table w-full border-collapse';
 
       const rows = Array.from(table.querySelectorAll('tr'));
       if (rows.length === 0) return;
@@ -76,51 +76,77 @@ export function cleanWordHtml(rawHtml: string): string {
       }
     });
 
-    // 2. Clean paragraphs & Word bullet lists
-    const paragraphs = Array.from(body.querySelectorAll('p, div.MsoNormal, div.MsoListParagraph'));
-    paragraphs.forEach((p) => {
-      const text = p.textContent?.trim() || '';
-      const className = p.className || '';
+    // 2. Clean paragraphs, lists, and headings
+    const elements = Array.from(body.querySelectorAll('p, div, li, ol, ul, h1, h2, h3, h4, blockquote, span, em, strong, a'));
+    elements.forEach((el) => {
+      const tagName = el.tagName.toLowerCase();
+      const text = el.textContent?.trim() || '';
+      const className = el.className || '';
+
+      // Strip dangerous layout and style attributes causing horizontal overflows
+      el.removeAttribute('style');
+      if (tagName !== 'table') {
+        el.removeAttribute('class');
+      }
 
       // Skip completely empty Word spacing paragraphs
-      if (!text && !p.querySelector('img, table')) {
-        p.remove();
+      if ((tagName === 'p' || tagName === 'div') && !text && !el.querySelector('img, table')) {
+        el.remove();
         return;
       }
 
-      // Check if Word encoded a list bullet item
-      if (className.includes('MsoListParagraph') || /^[•·\-\*]\s+/.test(text)) {
-        const cleanText = text.replace(/^[•·\-\*]\s+/, '').trim();
-        const li = doc.createElement('li');
-        li.innerHTML = cleanText;
-        
-        // Find or create adjacent <ul>
-        const prev = p.previousElementSibling;
-        if (prev && prev.tagName.toLowerCase() === 'ul') {
-          prev.appendChild(li);
-          p.remove();
-        } else {
-          const ul = doc.createElement('ul');
-          ul.appendChild(li);
-          p.parentNode?.insertBefore(ul, p);
-          p.remove();
+      // Convert Word bullet list paragraphs
+      if (tagName === 'p' || tagName === 'div') {
+        // Bullet list item (• or - or *)
+        if (className.includes('MsoListParagraph') && /^[•·\-\*]\s+/.test(text)) {
+          const cleanText = text.replace(/^[•·\-\*]\s+/, '').trim();
+          const li = doc.createElement('li');
+          li.innerHTML = cleanText;
+          
+          const prev = el.previousElementSibling;
+          if (prev && prev.tagName.toLowerCase() === 'ul') {
+            prev.appendChild(li);
+            el.remove();
+          } else {
+            const ul = doc.createElement('ul');
+            ul.appendChild(li);
+            el.parentNode?.insertBefore(ul, el);
+            el.remove();
+          }
+          return;
         }
-        return;
-      }
 
-      // Clean inline Word fonts and mso styles
-      p.removeAttribute('style');
-      p.removeAttribute('class');
+        // Numbered list item (e.g. "1. ", "2) ", etc.)
+        const numMatch = text.match(/^(\d+)[\.\)]\s+(.*)/s);
+        if (numMatch) {
+          const li = doc.createElement('li');
+          // If inner HTML contains formatting, clean the leading number
+          const cleanInner = el.innerHTML.replace(/^\s*(?:<[^>]+>)*\s*\d+[\.\)]\s*/, '');
+          li.innerHTML = cleanInner || numMatch[2];
+          
+          const prev = el.previousElementSibling;
+          if (prev && prev.tagName.toLowerCase() === 'ol') {
+            prev.appendChild(li);
+            el.remove();
+          } else {
+            const ol = doc.createElement('ol');
+            ol.appendChild(li);
+            el.parentNode?.insertBefore(ol, el);
+            el.remove();
+          }
+          return;
+        }
 
-      // Check for Word title/heading styles
-      if (className.includes('Heading1') || className.includes('Title')) {
-        const h2 = doc.createElement('h2');
-        h2.innerHTML = p.innerHTML;
-        p.parentNode?.replaceChild(h2, p);
-      } else if (className.includes('Heading2') || className.includes('Heading3')) {
-        const h3 = doc.createElement('h3');
-        h3.innerHTML = p.innerHTML;
-        p.parentNode?.replaceChild(h3, p);
+        // Heading styles
+        if (className.includes('Heading1') || className.includes('Title')) {
+          const h2 = doc.createElement('h2');
+          h2.innerHTML = el.innerHTML;
+          el.parentNode?.replaceChild(h2, el);
+        } else if (className.includes('Heading2') || className.includes('Heading3')) {
+          const h3 = doc.createElement('h3');
+          h3.innerHTML = el.innerHTML;
+          el.parentNode?.replaceChild(h3, el);
+        }
       }
     });
 
@@ -275,6 +301,13 @@ export function convertMarkdownOrTextToVisualHtml(content: string | string[]): s
       continue;
     }
 
+    // Numbered List
+    if (/^\d+[\.\)]\s+/.test(line)) {
+      const item = line.replace(/^\d+[\.\)]\s+/, '');
+      htmlParts.push(`<ol><li>${formatInlineStyles(item)}</li></ol>`);
+      continue;
+    }
+
     // Bullet List
     if (/^[•·\-\*]\s+/.test(line)) {
       const item = line.replace(/^[•·\-\*]\s+/, '');
@@ -290,8 +323,11 @@ export function convertMarkdownOrTextToVisualHtml(content: string | string[]): s
     flushTable();
   }
 
-  // Merge consecutive <ul> into single list
-  const mergedHtml = htmlParts.join('\n').replace(/<\/ul>\s*<ul>/gi, '');
+  // Merge consecutive <ul> and <ol> into clean single lists
+  const mergedHtml = htmlParts
+    .join('\n')
+    .replace(/<\/ul>\s*<ul>/gi, '')
+    .replace(/<\/ol>\s*<ol>/gi, '');
   return mergedHtml;
 }
 

@@ -140,18 +140,18 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
         </div>
 
         {/* Article Body */}
-        <div className="p-6 sm:p-10 md:p-14 max-w-3xl mx-auto">
+        <div className="p-5 sm:p-10 md:p-14 max-w-3xl mx-auto overflow-hidden break-words w-full">
           {/* Headline */}
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-neutral-900 leading-tight mb-6">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-neutral-900 leading-tight mb-6 break-words">
             {article.title}
           </h1>
 
           {/* Author Card */}
-          <div className="flex items-center gap-3.5 pb-8 mb-8 border-b border-neutral-100">
+          <div className="flex items-center gap-3.5 pb-6 sm:pb-8 mb-6 sm:mb-8 border-b border-neutral-100">
             <img
               src={article.author.avatar}
               alt={article.author.name}
-              className="w-12 h-12 rounded-full object-cover border border-neutral-200"
+              className="w-12 h-12 rounded-full object-cover border border-neutral-200 shrink-0"
             />
             <div>
               <h3 className="text-sm font-bold text-neutral-900">{article.author.name}</h3>
@@ -160,12 +160,12 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
           </div>
 
           {/* Summary Lead */}
-          <p className="text-lg sm:text-xl font-normal text-neutral-700 leading-relaxed italic border-l-2 border-neutral-900 pl-5 mb-8">
+          <p className="text-base sm:text-xl font-normal text-neutral-700 leading-relaxed italic border-l-2 border-neutral-900 pl-4 sm:pl-5 mb-8 break-words">
             "{article.summary}"
           </p>
 
           {/* Content Body */}
-          <div className="space-y-6 text-neutral-800 leading-relaxed font-normal">
+          <div className="space-y-6 text-neutral-800 leading-relaxed font-normal overflow-hidden break-words w-full">
             <ArticleContentRenderer content={article.content} />
           </div>
 
