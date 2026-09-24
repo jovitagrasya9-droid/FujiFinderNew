@@ -87,35 +87,20 @@ async function fetchArticles() {
     console.warn('Could not fetch online articles during build, using defaults:', err.message);
   }
 
-  // Fallback defaults if offline during build
   return [
+    {
+      title: 'Seni Film Simulation: Bagaimana Fujifilm Merevolusi Color Science Digital',
+      slug: 'seni-film-simulation-bagaimana-fujifilm-merevolusi-color-science-digital',
+      date: '2024-09-01',
+      featured: true,
+      cover_image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=1200&q=80',
+    },
     {
       title: 'Cara Memindahkan Foto Fujifilm ke HP: Panduan XApp, Camera Remote, dan Card Reader',
       slug: 'cara-memindahkan-foto-fujifilm-ke-hp-panduan-xapp-camera-remote-dan-card-reader',
       date: '2026-09-23',
       featured: true,
-      cover_image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=1200&q=80',
-    },
-    {
-      title: 'Resep Film Fujifilm Terbaik untuk Street Photography: Warna Analog Langsung dari Kamera',
-      slug: 'resep-film-fujifilm-terbaik-untuk-street-photography-warna-analog-langsung-dari-kamera',
-      date: '2026-09-23',
-      featured: false,
-      cover_image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=1200&q=80',
-    },
-    {
-      title: 'Fujifilm X-T5 vs X-T50: Mana yang Harus Anda Pilih untuk Fotografi Harian?',
-      slug: 'fujifilm-x-t5-vs-x-t50-mana-yang-harus-anda-pilih-untuk-fotografi-harian',
-      date: '2026-09-23',
-      featured: false,
-      cover_image: 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=1200&q=80',
-    },
-    {
-      title: 'Review Fujifilm X100VI: Apakah Kamera Compact Paling Viral Ini Layak Dibeli?',
-      slug: 'review-fujifilm-x100vi-apakah-kamera-compact-paling-viral-ini-layak-dibeli',
-      date: '2026-09-23',
-      featured: false,
-      cover_image: 'https://images.unsplash.com/photo-1512790182412-b19e6d62bc39?auto=format&fit=crop&w=1200&q=80',
+      cover_image: 'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?auto=format&fit=crop&w=1200&q=80',
     },
   ];
 }
@@ -147,7 +132,7 @@ async function run() {
 
     let imgTag = '';
     if (art.cover_image && art.cover_image.startsWith('http')) {
-      imgTag = `\n    <image:image>\n      <image:loc>${escapeXml(art.cover_image)}</image:loc>\n      <image:title>${escapeXml(art.title || '')}</image:title>\n    </image:image>`;
+      imgTag = `\n    <image:image>\n      <image:loc>${escapeXml(art.cover_image)}</image:loc>\n    </image:image>`;
     }
 
     articleNodes.push(`  <url>

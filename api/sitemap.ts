@@ -99,7 +99,7 @@ export default async function handler(req: any, res: any) {
 
       let imgTag = '';
       if (art.cover_image && art.cover_image.startsWith('http')) {
-        imgTag = `\n    <image:image>\n      <image:loc>${escapeXml(art.cover_image)}</image:loc>\n      <image:title>${escapeXml(art.title || '')}</image:title>\n    </image:image>`;
+        imgTag = `\n    <image:image>\n      <image:loc>${escapeXml(art.cover_image)}</image:loc>\n    </image:image>`;
       }
 
       articleNodes.push(`  <url>
@@ -118,7 +118,7 @@ ${articleNodes.join('\n')}
 </urlset>`;
 
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=14400, stale-while-revalidate=86400');
+    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
     return res.status(200).send(xml);
   } catch (err: any) {
     console.error('Sitemap API error:', err);

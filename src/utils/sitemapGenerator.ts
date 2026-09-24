@@ -45,8 +45,7 @@ export const STATIC_PUBLIC_ROUTES: StaticRouteConfig[] = [
 ];
 
 /**
- * Normalizes any date string (ISO, timestamp, or Indonesian/English text) to standard W3C YYYY-MM-DD
- * Ensures invalid formats like "Sep 2024" are strictly converted to valid ISO dates (e.g. "2024-09-01")
+ * Converts any date string to standard W3C ISO YYYY-MM-DD format
  */
 export function formatIsoLastMod(dateStr?: string): string {
   const fallbackToday = new Date().toISOString().split('T')[0];
@@ -57,7 +56,7 @@ export function formatIsoLastMod(dateStr?: string): string {
 
   const clean = dateStr.trim();
 
-  // 1. Direct match for standard YYYY-MM-DD or ISO 8601 string
+  // 1. Match YYYY-MM-DD
   const isoMatch = clean.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (isoMatch) {
     const year = parseInt(isoMatch[1], 10);
@@ -68,24 +67,11 @@ export function formatIsoLastMod(dateStr?: string): string {
     }
   }
 
-  // 2. Try parsing Indonesian / English month expressions (e.g., "Sep 2024", "Agt 2024", "22 Sep 2026")
+  // 2. Parse human textual dates (Indonesian & English)
   const months: Record<string, string> = {
-    jan: '01',
-    feb: '02',
-    mar: '03',
-    apr: '04',
-    mei: '05',
-    may: '05',
-    jun: '06',
-    jul: '07',
-    agu: '08',
-    aug: '08',
-    sep: '09',
-    okt: '10',
-    oct: '10',
-    nov: '11',
-    des: '12',
-    dec: '12',
+    jan: '01', feb: '02', mar: '03', apr: '04', mei: '05', may: '05',
+    jun: '06', jul: '07', agu: '08', aug: '08', sep: '09', okt: '10',
+    oct: '10', nov: '11', des: '12', dec: '12',
   };
 
   const lower = clean.toLowerCase();
@@ -104,7 +90,7 @@ export function formatIsoLastMod(dateStr?: string): string {
     }
   }
 
-  // 3. Fallback to standard JavaScript Date parser
+  // 3. Fallback standard Date parse
   const parsed = new Date(clean);
   if (!isNaN(parsed.getTime())) {
     return parsed.toISOString().split('T')[0];
@@ -114,7 +100,7 @@ export function formatIsoLastMod(dateStr?: string): string {
 }
 
 /**
- * Escapes special XML characters to ensure 100% valid XML output
+ * Escapes XML special characters for 100% valid XML
  */
 export function escapeXml(str: string): string {
   if (!str) return '';
@@ -127,7 +113,7 @@ export function escapeXml(str: string): string {
 }
 
 /**
- * Generates official XML sitemap string from published articles and static pages
+ * Generates official, clean, Google-compliant XML sitemap string
  */
 export function generateSitemapXml(
   articles: Article[],
@@ -136,7 +122,7 @@ export function generateSitemapXml(
   const domain = baseUrl.replace(/\/+$/, '');
   const todayIso = new Date().toISOString().split('T')[0];
 
-  // 1. Filter only published articles with valid slug (exclude drafts, deleted, invalid)
+  // Filter only published articles with non-empty slug
   const publishedArticles = (articles || []).filter(
     (art) =>
       art &&
@@ -156,7 +142,7 @@ export function generateSitemapXml(
     }
   }
 
-  // 2. Build XML blocks
+  // Static routes
   const staticUrlNodes = STATIC_PUBLIC_ROUTES.map((route) => {
     const loc = `${domain}${route.path}`;
     return `  <url>
@@ -167,18 +153,17 @@ export function generateSitemapXml(
   </url>`;
   }).join('\n');
 
+  // Article routes
   const articleUrlNodes = uniqueArticles.map((art) => {
     const loc = `${domain}/artikel/${art.slug.trim()}`;
     const lastmod = formatIsoLastMod(art.dateModified || art.date);
     const priority = art.featured ? '0.9' : '0.8';
 
-    // Optional Google Image Sitemap extension for richer discovery
-    let imageXml = '';
+    let imageBlock = '';
     if (art.coverImage && art.coverImage.startsWith('http')) {
-      imageXml = `
+      imageBlock = `
     <image:image>
       <image:loc>${escapeXml(art.coverImage)}</image:loc>
-      <image:title>${escapeXml(art.title)}</image:title>
     </image:image>`;
     }
 
@@ -186,7 +171,7 @@ export function generateSitemapXml(
     <loc>${escapeXml(loc)}</loc>
     <lastmod>${lastmod}</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>${priority}</priority>${imageXml}
+    <priority>${priority}</priority>${imageBlock}
   </url>`;
   }).join('\n');
 
@@ -199,7 +184,7 @@ ${articleUrlNodes}
 }
 
 /**
- * Fetches published articles live from Supabase database and generates the fresh sitemap XML
+ * Fetches published articles live from Supabase database and generates the sitemap XML
  */
 export async function buildDynamicSitemapXml(
   baseUrl: string = CANONICAL_SITE_URL
@@ -211,7 +196,6 @@ export async function buildDynamicSitemapXml(
       .eq('status', 'published');
 
     if (error || !data || data.length === 0) {
-      // Fallback to starter articles if database is offline or empty
       return generateSitemapXml(FUJIFILM_STARTER_ARTICLES, baseUrl);
     }
 
@@ -247,7 +231,7 @@ export async function buildDynamicSitemapXml(
 }
 
 /**
- * Triggers a browser download of the generated sitemap.xml file
+ * Triggers a download of the generated sitemap.xml
  */
 export function downloadSitemap(
   articles: Article[],
@@ -265,4 +249,3 @@ export function downloadSitemap(
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
-
