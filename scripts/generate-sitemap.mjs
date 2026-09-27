@@ -15,8 +15,16 @@ const STATIC_PUBLIC_ROUTES = [
   { path: '/blog', changefreq: 'weekly', priority: '0.8' },
 ];
 
+/**
+ * Escapes XML special characters according to XML 1.0 specification
+ * & -> &amp;
+ * < -> &lt;
+ * > -> &gt;
+ * " -> &quot;
+ * ' -> &apos;
+ */
 function escapeXml(str) {
-  if (!str) return '';
+  if (!str || typeof str !== 'string') return '';
   return str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -25,12 +33,34 @@ function escapeXml(str) {
     .replace(/'/g, '&apos;');
 }
 
-function formatIsoLastMod(dateStr) {
+/**
+ * Safely sanitizes article slug for URL embedding
+ */
+function sanitizeSlug(slug) {
+  if (!slug || typeof slug !== 'string') return '';
+  const clean = slug.trim().replace(/^\/+|\/+$/g, '');
+  return encodeURIComponent(clean);
+}
+
+/**
+ * Converts any date value to standard W3C ISO YYYY-MM-DD format
+ */
+function formatIsoLastMod(dateVal) {
   const fallbackToday = new Date().toISOString().split('T')[0];
-  if (!dateStr || typeof dateStr !== 'string' || !dateStr.trim()) {
+
+  if (!dateVal) return fallbackToday;
+
+  if (dateVal instanceof Date) {
+    if (!isNaN(dateVal.getTime())) {
+      return dateVal.toISOString().split('T')[0];
+    }
     return fallbackToday;
   }
-  const clean = dateStr.trim();
+
+  const clean = String(dateVal).trim();
+  if (!clean) return fallbackToday;
+
+  // 1. Direct YYYY-MM-DD match
   const isoMatch = clean.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (isoMatch) {
     const year = parseInt(isoMatch[1], 10);
@@ -40,6 +70,17 @@ function formatIsoLastMod(dateStr) {
       return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
     }
   }
+
+  // 2. Standard Date parse
+  const parsed = new Date(clean);
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    if (y >= 1990 && y <= 2100) {
+      return parsed.toISOString().split('T')[0];
+    }
+  }
+
+  // 3. Human textual dates (Indonesian & English)
   const months = {
     jan: '01', feb: '02', mar: '03', apr: '04', mei: '05', may: '05',
     jun: '06', jul: '07', agu: '08', aug: '08', sep: '09', okt: '10',
@@ -61,10 +102,6 @@ function formatIsoLastMod(dateStr) {
     }
   }
 
-  const parsed = new Date(clean);
-  if (!isNaN(parsed.getTime())) {
-    return parsed.toISOString().split('T')[0];
-  }
   return fallbackToday;
 }
 
@@ -73,7 +110,7 @@ async function fetchArticles() {
   const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_1pmu2vQ5d8Lotefz-2qQXQ_r6qstVJa';
 
   try {
-    const res = await fetch(`${supabaseUrl}/rest/v1/articles?select=title,slug,status,date,date_modified,cover_image,featured&status=eq.published`, {
+    const res = await fetch(`${supabaseUrl}/rest/v1/articles?select=title,slug,status,date,date_modified,updated_at,created_at,featured&status=eq.published`, {
       headers: {
         apikey: supabaseKey,
         Authorization: `Bearer ${supabaseKey}`,
@@ -92,15 +129,15 @@ async function fetchArticles() {
       title: 'Seni Film Simulation: Bagaimana Fujifilm Merevolusi Color Science Digital',
       slug: 'seni-film-simulation-bagaimana-fujifilm-merevolusi-color-science-digital',
       date: '2024-09-01',
+      date_modified: '2024-09-01',
       featured: true,
-      cover_image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=1200&q=80',
     },
     {
       title: 'Cara Memindahkan Foto Fujifilm ke HP: Panduan XApp, Camera Remote, dan Card Reader',
       slug: 'cara-memindahkan-foto-fujifilm-ke-hp-panduan-xapp-camera-remote-dan-card-reader',
-      date: '2026-09-23',
+      date: '2023-12-31',
+      date_modified: '2026-09-23',
       featured: true,
-      cover_image: 'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?auto=format&fit=crop&w=1200&q=80',
     },
   ];
 }
@@ -121,33 +158,28 @@ async function run() {
   const articleNodes = [];
 
   for (const art of articles) {
-    if (!art || !art.slug) continue;
-    const slug = art.slug.trim();
-    if (seen.has(slug)) continue;
-    seen.add(slug);
+    if (!art || !art.slug || art.status !== 'published') continue;
+    const cleanSlug = sanitizeSlug(art.slug);
+    if (!cleanSlug || seen.has(cleanSlug)) continue;
+    seen.add(cleanSlug);
 
-    const loc = `${domain}/artikel/${slug}`;
-    const lastmod = formatIsoLastMod(art.date_modified || art.date);
+    const loc = `${domain}/artikel/${cleanSlug}`;
+    const lastmod = formatIsoLastMod(art.date_modified || art.updated_at || art.date);
     const priority = art.featured ? '0.9' : '0.8';
-
-    let imgTag = '';
-    if (art.cover_image && art.cover_image.startsWith('http')) {
-      imgTag = `\n    <image:image>\n      <image:loc>${escapeXml(art.cover_image)}</image:loc>\n    </image:image>`;
-    }
 
     articleNodes.push(`  <url>
     <loc>${escapeXml(loc)}</loc>
     <lastmod>${lastmod}</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>${priority}</priority>${imgTag}
+    <priority>${priority}</priority>
   </url>`);
   }
 
+  const allNodes = articleNodes.length > 0 ? `${staticNodes}\n${articleNodes.join('\n')}` : staticNodes;
+
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-${staticNodes}
-${articleNodes.join('\n')}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${allNodes}
 </urlset>`;
 
   const publicPath = path.resolve(__dirname, '../public/sitemap.xml');

@@ -45,18 +45,52 @@ export const STATIC_PUBLIC_ROUTES: StaticRouteConfig[] = [
 ];
 
 /**
+ * Escapes XML special characters according to XML 1.0 specification
+ * Minimal entities handled:
+ * & -> &amp;
+ * < -> &lt;
+ * > -> &gt;
+ * " -> &quot;
+ * ' -> &apos;
+ */
+export function escapeXml(str: string): string {
+  if (!str || typeof str !== 'string') return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+/**
+ * Safely sanitizes article slug for URL embedding
+ */
+export function sanitizeSlug(slug: string): string {
+  if (!slug || typeof slug !== 'string') return '';
+  const clean = slug.trim().replace(/^\/+|\/+$/g, '');
+  return encodeURIComponent(clean);
+}
+
+/**
  * Converts any date string to standard W3C ISO YYYY-MM-DD format
  */
-export function formatIsoLastMod(dateStr?: string): string {
+export function formatIsoLastMod(dateVal?: string | Date | number): string {
   const fallbackToday = new Date().toISOString().split('T')[0];
 
-  if (!dateStr || typeof dateStr !== 'string' || !dateStr.trim()) {
+  if (!dateVal) return fallbackToday;
+
+  if (dateVal instanceof Date) {
+    if (!isNaN(dateVal.getTime())) {
+      return dateVal.toISOString().split('T')[0];
+    }
     return fallbackToday;
   }
 
-  const clean = dateStr.trim();
+  const clean = String(dateVal).trim();
+  if (!clean) return fallbackToday;
 
-  // 1. Match YYYY-MM-DD
+  // 1. Direct YYYY-MM-DD match
   const isoMatch = clean.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (isoMatch) {
     const year = parseInt(isoMatch[1], 10);
@@ -67,7 +101,16 @@ export function formatIsoLastMod(dateStr?: string): string {
     }
   }
 
-  // 2. Parse human textual dates (Indonesian & English)
+  // 2. Standard Date parse
+  const parsed = new Date(clean);
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    if (y >= 1990 && y <= 2100) {
+      return parsed.toISOString().split('T')[0];
+    }
+  }
+
+  // 3. Human textual dates (Indonesian & English)
   const months: Record<string, string> = {
     jan: '01', feb: '02', mar: '03', apr: '04', mei: '05', may: '05',
     jun: '06', jul: '07', agu: '08', aug: '08', sep: '09', okt: '10',
@@ -90,30 +133,12 @@ export function formatIsoLastMod(dateStr?: string): string {
     }
   }
 
-  // 3. Fallback standard Date parse
-  const parsed = new Date(clean);
-  if (!isNaN(parsed.getTime())) {
-    return parsed.toISOString().split('T')[0];
-  }
-
   return fallbackToday;
 }
 
 /**
- * Escapes XML special characters for 100% valid XML
- */
-export function escapeXml(str: string): string {
-  if (!str) return '';
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
-
-/**
  * Generates official, clean, Google-compliant XML sitemap string
+ * Simplified standard format without image extensions for 100% GSC compatibility.
  */
 export function generateSitemapXml(
   articles: Article[],
@@ -126,20 +151,22 @@ export function generateSitemapXml(
   const publishedArticles = (articles || []).filter(
     (art) =>
       art &&
-      art.status !== 'draft' &&
+      art.status === 'published' &&
       typeof art.slug === 'string' &&
       art.slug.trim().length > 0
   );
 
   // Deduplicate articles by slug
   const seenSlugs = new Set<string>();
-  const uniqueArticles: Article[] = [];
+  const uniqueArticles: { slug: string; lastmod: string; priority: string }[] = [];
   for (const art of publishedArticles) {
-    const cleanSlug = art.slug.trim();
-    if (!seenSlugs.has(cleanSlug)) {
-      seenSlugs.add(cleanSlug);
-      uniqueArticles.push(art);
-    }
+    const cleanSlug = sanitizeSlug(art.slug);
+    if (!cleanSlug || seenSlugs.has(cleanSlug)) continue;
+    seenSlugs.add(cleanSlug);
+
+    const lastmod = formatIsoLastMod(art.dateModified || art.date);
+    const priority = art.featured ? '0.9' : '0.8';
+    uniqueArticles.push({ slug: cleanSlug, lastmod, priority });
   }
 
   // Static routes
@@ -155,31 +182,20 @@ export function generateSitemapXml(
 
   // Article routes
   const articleUrlNodes = uniqueArticles.map((art) => {
-    const loc = `${domain}/artikel/${art.slug.trim()}`;
-    const lastmod = formatIsoLastMod(art.dateModified || art.date);
-    const priority = art.featured ? '0.9' : '0.8';
-
-    let imageBlock = '';
-    if (art.coverImage && art.coverImage.startsWith('http')) {
-      imageBlock = `
-    <image:image>
-      <image:loc>${escapeXml(art.coverImage)}</image:loc>
-    </image:image>`;
-    }
-
+    const loc = `${domain}/artikel/${art.slug}`;
     return `  <url>
     <loc>${escapeXml(loc)}</loc>
-    <lastmod>${lastmod}</lastmod>
+    <lastmod>${art.lastmod}</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>${priority}</priority>${imageBlock}
+    <priority>${art.priority}</priority>
   </url>`;
   }).join('\n');
 
+  const allNodes = articleUrlNodes ? `${staticUrlNodes}\n${articleUrlNodes}` : staticUrlNodes;
+
   return `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-${staticUrlNodes}
-${articleUrlNodes}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${allNodes}
 </urlset>`.trim();
 }
 
@@ -192,7 +208,7 @@ export async function buildDynamicSitemapXml(
   try {
     const { data, error } = await supabase
       .from('articles')
-      .select('id, title, slug, status, date, date_modified, cover_image, featured')
+      .select('id, title, slug, status, date, date_modified, updated_at, featured')
       .eq('status', 'published');
 
     if (error || !data || data.length === 0) {
@@ -206,7 +222,7 @@ export async function buildDynamicSitemapXml(
       status: row.status || 'published',
       date: row.date || new Date().toISOString().split('T')[0],
       dateModified: row.date_modified || row.updated_at || undefined,
-      coverImage: row.cover_image || '',
+      coverImage: '',
       featured: Boolean(row.featured),
       category: 'Editorial',
       readTime: '5 min read',

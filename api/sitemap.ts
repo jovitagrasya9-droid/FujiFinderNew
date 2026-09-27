@@ -10,8 +10,16 @@ const STATIC_PUBLIC_ROUTES = [
   { path: '/blog', changefreq: 'weekly', priority: '0.8' },
 ];
 
+/**
+ * Escapes XML special characters according to XML 1.0 specification
+ * & -> &amp;
+ * < -> &lt;
+ * > -> &gt;
+ * " -> &quot;
+ * ' -> &apos;
+ */
 function escapeXml(str: string): string {
-  if (!str) return '';
+  if (!str || typeof str !== 'string') return '';
   return str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -20,12 +28,34 @@ function escapeXml(str: string): string {
     .replace(/'/g, '&apos;');
 }
 
-function formatIsoLastMod(dateStr?: string): string {
+/**
+ * Safely sanitizes article slug for URL embedding
+ */
+function sanitizeSlug(slug: string): string {
+  if (!slug || typeof slug !== 'string') return '';
+  const clean = slug.trim().replace(/^\/+|\/+$/g, '');
+  return encodeURIComponent(clean);
+}
+
+/**
+ * Converts any date value to standard W3C ISO YYYY-MM-DD format
+ */
+function formatIsoLastMod(dateVal?: string | Date | number): string {
   const fallbackToday = new Date().toISOString().split('T')[0];
-  if (!dateStr || typeof dateStr !== 'string' || !dateStr.trim()) {
+
+  if (!dateVal) return fallbackToday;
+
+  if (dateVal instanceof Date) {
+    if (!isNaN(dateVal.getTime())) {
+      return dateVal.toISOString().split('T')[0];
+    }
     return fallbackToday;
   }
-  const clean = dateStr.trim();
+
+  const clean = String(dateVal).trim();
+  if (!clean) return fallbackToday;
+
+  // 1. Direct YYYY-MM-DD match
   const isoMatch = clean.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (isoMatch) {
     const year = parseInt(isoMatch[1], 10);
@@ -35,6 +65,17 @@ function formatIsoLastMod(dateStr?: string): string {
       return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
     }
   }
+
+  // 2. Standard Date parse
+  const parsed = new Date(clean);
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    if (y >= 1990 && y <= 2100) {
+      return parsed.toISOString().split('T')[0];
+    }
+  }
+
+  // 3. Human textual dates (Indonesian & English)
   const months: Record<string, string> = {
     jan: '01', feb: '02', mar: '03', apr: '04', mei: '05', may: '05',
     jun: '06', jul: '07', agu: '08', aug: '08', sep: '09', okt: '10',
@@ -56,10 +97,6 @@ function formatIsoLastMod(dateStr?: string): string {
     }
   }
 
-  const parsed = new Date(clean);
-  if (!isNaN(parsed.getTime())) {
-    return parsed.toISOString().split('T')[0];
-  }
   return fallbackToday;
 }
 
@@ -71,7 +108,7 @@ export default async function handler(req: any, res: any) {
 
     const { data: articles } = await supabase
       .from('articles')
-      .select('title, slug, status, date, date_modified, cover_image, featured')
+      .select('title, slug, status, date, date_modified, updated_at, featured')
       .eq('status', 'published');
 
     const domain = CANONICAL_SITE_URL;
@@ -84,52 +121,74 @@ export default async function handler(req: any, res: any) {
     <priority>${r.priority}</priority>
   </url>`).join('\n');
 
-    const published = (articles || []).filter((a: any) => a && a.slug && a.status !== 'draft');
+    const published = (articles || []).filter((a: any) => a && a.slug && a.status === 'published');
     const seen = new Set<string>();
     const articleNodes: string[] = [];
 
     for (const art of published) {
-      const slug = art.slug.trim();
-      if (seen.has(slug)) continue;
-      seen.add(slug);
+      const cleanSlug = sanitizeSlug(art.slug);
+      if (!cleanSlug || seen.has(cleanSlug)) continue;
+      seen.add(cleanSlug);
 
-      const loc = `${domain}/artikel/${slug}`;
-      const lastmod = formatIsoLastMod(art.date_modified || art.date);
+      const loc = `${domain}/artikel/${cleanSlug}`;
+      const lastmod = formatIsoLastMod(art.date_modified || art.updated_at || art.date);
       const priority = art.featured ? '0.9' : '0.8';
-
-      let imgTag = '';
-      if (art.cover_image && art.cover_image.startsWith('http')) {
-        imgTag = `\n    <image:image>\n      <image:loc>${escapeXml(art.cover_image)}</image:loc>\n    </image:image>`;
-      }
 
       articleNodes.push(`  <url>
     <loc>${escapeXml(loc)}</loc>
     <lastmod>${lastmod}</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>${priority}</priority>${imgTag}
+    <priority>${priority}</priority>
   </url>`);
     }
 
+    const allNodes = articleNodes.length > 0 ? `${staticNodes}\n${articleNodes.join('\n')}` : staticNodes;
+
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-${staticNodes}
-${articleNodes.join('\n')}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${allNodes}
 </urlset>`;
 
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400');
     return res.status(200).send(xml);
   } catch (err: any) {
     console.error('Sitemap API error:', err);
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    const today = new Date().toISOString().split('T')[0];
     return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>${CANONICAL_SITE_URL}/</loc>
-    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <lastmod>${today}</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>${CANONICAL_SITE_URL}/kamera</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>${CANONICAL_SITE_URL}/reviews</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>${CANONICAL_SITE_URL}/guides</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>${CANONICAL_SITE_URL}/blog</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
 </urlset>`);
   }
