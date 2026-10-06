@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { addSubscriberToSupabase } from '../services/supabaseService';
 import { trackEvent } from '../utils/analytics';
+import { safeGetItem, safeSetItem } from '../utils/storage';
 
 export const NewsletterSection: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -28,8 +29,7 @@ export const NewsletterSection: React.FC = () => {
 
     // 2. Save to local storage fallback for CMS subscriber view
     try {
-      const raw = localStorage.getItem('FujiFinder_subscribers');
-      const existing = raw ? JSON.parse(raw) : [];
+      const existing = safeGetItem<any[]>('FujiFinder_subscribers', []);
       
       const alreadySubscribed = existing.some((item: any) => 
         typeof item === 'string' ? item === email : item?.email === email
@@ -44,7 +44,7 @@ export const NewsletterSection: React.FC = () => {
             year: 'numeric',
           }),
         };
-        localStorage.setItem('FujiFinder_subscribers', JSON.stringify([...existing, newRecord]));
+        safeSetItem('FujiFinder_subscribers', [...existing, newRecord]);
       }
     } catch {
       // ignore

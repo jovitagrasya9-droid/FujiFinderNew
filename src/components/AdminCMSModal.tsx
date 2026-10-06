@@ -57,6 +57,7 @@ import {
   getCamerasFromSupabase,
   getSubscribersFromSupabase,
 } from '../services/supabaseService';
+import { safeGetItem, safeSetItem, safeRemoveItem } from '../utils/storage';
 
 interface AdminCMSModalProps {
   isOpen: boolean;
@@ -117,11 +118,7 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
   const [changePassSuccess, setChangePassSuccess] = useState(false);
 
   const getSavedPassword = () => {
-    try {
-      return localStorage.getItem('fujifinder_cms_password') || 'admin';
-    } catch {
-      return 'admin';
-    }
+    return safeGetItem<string>('fujifinder_cms_password', 'admin');
   };
 
   const handleLogin = (e: React.FormEvent) => {
@@ -154,17 +151,13 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
   const handleChangePassword = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPassword.trim()) return;
-    try {
-      localStorage.setItem('fujifinder_cms_password', newPassword.trim());
-      setChangePassSuccess(true);
-      setTimeout(() => {
-        setChangePassSuccess(false);
-        setShowChangePassword(false);
-        setNewPassword('');
-      }, 1500);
-    } catch {
-      // ignore
-    }
+    safeSetItem('fujifinder_cms_password', newPassword.trim());
+    setChangePassSuccess(true);
+    setTimeout(() => {
+      setChangePassSuccess(false);
+      setShowChangePassword(false);
+      setNewPassword('');
+    }, 1500);
   };
 
   // ==========================================
@@ -356,22 +349,16 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
   // ==========================================
   const [searchSubscriber, setSearchSubscriber] = useState('');
   const [subscribers, setSubscribers] = useState<SubscriberItem[]>(() => {
-    try {
-      const raw = localStorage.getItem('FujiFinder_subscribers');
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      return parsed.map((item: any) => {
-        if (typeof item === 'string') {
-          return { email: item, date: 'Terdaftar' };
-        }
-        return {
-          email: item.email || '',
-          date: item.date || 'Terdaftar',
-        };
-      });
-    } catch {
-      return [];
-    }
+    const raw = safeGetItem<any[]>('FujiFinder_subscribers', []);
+    return raw.map((item: any) => {
+      if (typeof item === 'string') {
+        return { email: item, date: 'Terdaftar' };
+      }
+      return {
+        email: item.email || '',
+        date: item.date || 'Terdaftar',
+      };
+    });
   });
 
   if (!isOpen) return null;
@@ -717,12 +704,12 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
   const handleDeleteSubscriber = (email: string) => {
     const updated = subscribers.filter((s) => s.email !== email);
     setSubscribers(updated);
-    localStorage.setItem('FujiFinder_subscribers', JSON.stringify(updated));
+    safeSetItem('FujiFinder_subscribers', updated);
   };
 
   const handleClearAllSubscribers = () => {
     if (window.confirm('Hapus semua daftar subscriber newsletter?')) {
-      localStorage.removeItem('FujiFinder_subscribers');
+      safeRemoveItem('FujiFinder_subscribers');
       setSubscribers([]);
     }
   };

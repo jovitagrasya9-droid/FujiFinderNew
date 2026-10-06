@@ -35,6 +35,7 @@ import {
   deleteCameraFromSupabase,
 } from './services/supabaseService';
 import { setArticleSEO, resetDefaultSEO } from './utils/seoManager';
+import { safeGetItem, safeSetItem, safeRemoveItem } from './utils/storage';
 
 export default function App() {
   // Navigation & view states
@@ -46,38 +47,15 @@ export default function App() {
 
   // Dynamic content states (starts with local cache or fallback starter articles, then syncs with Supabase)
   const [articles, setArticles] = useState<Article[]>(() => {
-    try {
-      const saved = localStorage.getItem('fujifinder_articles');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {
-      // ignore
-    }
-    return FUJIFILM_STARTER_ARTICLES;
+    return safeGetItem<Article[]>('fujifinder_articles', FUJIFILM_STARTER_ARTICLES);
   });
 
   const [cameras, setCameras] = useState<CameraProduct[]>(() => {
-    try {
-      const saved = localStorage.getItem('fujifinder_cameras');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {
-      // ignore
-    }
-    return FUJIFILM_STARTER_CAMERAS;
+    return safeGetItem<CameraProduct[]>('fujifinder_cameras', FUJIFILM_STARTER_CAMERAS);
   });
 
   const [globalAuthor, setGlobalAuthor] = useState<Author>(() => {
-    try {
-      const saved = localStorage.getItem('fujifinder_global_author');
-      return saved ? JSON.parse(saved) : DEFAULT_AUTHOR;
-    } catch {
-      return DEFAULT_AUTHOR;
-    }
+    return safeGetItem<Author>('fujifinder_global_author', DEFAULT_AUTHOR);
   });
 
   // Initial fetch from Supabase cloud database
@@ -109,17 +87,17 @@ export default function App() {
     };
   }, []);
 
-  // Sync to local storage on changes
+  // Sync to local storage on changes with QuotaExceeded protection
   useEffect(() => {
-    localStorage.setItem('fujifinder_articles', JSON.stringify(articles));
+    safeSetItem('fujifinder_articles', articles);
   }, [articles]);
 
   useEffect(() => {
-    localStorage.setItem('fujifinder_cameras', JSON.stringify(cameras));
+    safeSetItem('fujifinder_cameras', cameras);
   }, [cameras]);
 
   useEffect(() => {
-    localStorage.setItem('fujifinder_global_author', JSON.stringify(globalAuthor));
+    safeSetItem('fujifinder_global_author', globalAuthor);
   }, [globalAuthor]);
 
   // Helper: Extract view and slug from current URL
@@ -443,8 +421,8 @@ export default function App() {
   };
 
   const handleClearAllData = () => {
-    localStorage.removeItem('fujifinder_articles');
-    localStorage.removeItem('fujifinder_cameras');
+    safeRemoveItem('fujifinder_articles');
+    safeRemoveItem('fujifinder_cameras');
     setArticles([]);
     setCameras([]);
   };
@@ -459,7 +437,7 @@ export default function App() {
 
   const handleUpdateGlobalAuthor = (newAuthor: Author, applyToAll: boolean = false) => {
     setGlobalAuthor(newAuthor);
-    localStorage.setItem('fujifinder_global_author', JSON.stringify(newAuthor));
+    safeSetItem('fujifinder_global_author', newAuthor);
     if (applyToAll) {
       setArticles((prev) =>
         prev.map((art) => ({
