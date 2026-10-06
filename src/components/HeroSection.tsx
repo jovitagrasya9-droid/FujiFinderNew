@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, Camera } from 'lucide-react';
 import { Article } from '../types';
 
 interface HeroSectionProps {
@@ -33,18 +33,24 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
   // Default FujiFinder Hero when no articles exist yet
   const heroImage = activeArticle?.coverImage || 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=1920&q=85';
-  const heroCategory = activeArticle?.category || 'FUJIFINDER • EDITORIAL';
+  const heroCategory = activeArticle?.category || 'FUJIFILM CAMERA PLATFORM';
   const heroDate = activeArticle?.date || 'EST. 2024';
-  const heroTitle = activeArticle?.title || 'Capture More. Create Better.';
-  const heroSubtitle = activeArticle?.summary || 'The premier discovery publication for photographers and filmmakers. Explore authentic camera reviews, field benchmarks, and visual craftsmanship.';
+  const heroTitle = activeArticle?.title || 'Fujifilm Camera Reviews, Guides & Comparisons';
+  const heroSubtitle = activeArticle?.summary || 'FujiFinder is a dedicated Fujifilm camera platform helping photographers discover, compare, and master Fujifilm X Series and GFX cameras, lenses, and accessories.';
 
   return (
     <section
       id="hero-featured-story"
+      aria-label="FujiFinder Hero Section"
       className="pt-20 md:pt-24 px-3 sm:px-5 lg:px-8 max-w-[1440px] mx-auto"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
+      {/* Primary Semantic H1 for Homepage SEO */}
+      <h1 className="sr-only">
+        Fujifilm Camera Reviews, Guides & Comparisons
+      </h1>
+
       <div className="relative w-full rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl min-h-[580px] md:min-h-[660px] lg:min-h-[720px] flex items-center bg-neutral-950">
         {/* Background Image with smooth cinematic transition */}
         <div className="absolute inset-0 z-0">
@@ -70,8 +76,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               <span className="text-neutral-300 text-[11px]">{heroDate}</span>
             </div>
 
-            {/* Editorial Headline */}
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[68px] font-extrabold tracking-tight text-white leading-[1.08] text-balance">
+            {/* Visual Headline */}
+            <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-[68px] font-extrabold tracking-tight text-white leading-[1.08] text-balance">
               {heroTitle.includes('.') ? (
                 <>
                   <span className="block">{heroTitle.split('.')[0]}.</span>
@@ -80,7 +86,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               ) : (
                 heroTitle
               )}
-            </h1>
+            </h2>
 
             {/* Short Supporting Description */}
             <p className="text-base sm:text-lg md:text-xl text-neutral-300 max-w-xl font-normal leading-relaxed text-pretty">
@@ -95,7 +101,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                   onClick={() => onReadStory(activeArticle.slug)}
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold bg-white text-neutral-950 hover:bg-neutral-100 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
                 >
-                  <span>Read Story</span>
+                  <span>Baca Ulasan Lengkap</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               )}
@@ -108,7 +114,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                     : 'bg-white text-neutral-950 hover:bg-neutral-100 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]'
                 }`}
               >
-                <span>Explore Cameras</span>
+                <Camera className="w-4 h-4" />
+                <span>Jelajahi Kamera Fujifilm</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

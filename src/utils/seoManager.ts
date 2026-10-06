@@ -16,12 +16,12 @@ export interface SEOConfig {
   keywords?: string[];
 }
 
-const DEFAULT_SITE_NAME = 'FujiFinder';
-const DEFAULT_SITE_TITLE = 'FujiFinder — The Art & Science of Modern Cameras';
-const DEFAULT_SITE_DESC =
-  'The premier discovery publication for photographers and filmmakers. Explore authentic camera reviews, field benchmarks, and visual craftsmanship.';
-const DEFAULT_OG_IMAGE =
-  'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=1200&q=80';
+export const DEFAULT_SITE_NAME = 'FujiFinder';
+export const DEFAULT_SITE_TITLE = 'FujiFinder — Fujifilm Camera Reviews, Guides & Comparisons';
+export const DEFAULT_SITE_DESC =
+  'Fujifilm camera reviews, comparisons, buying guides, and photography tips to help you choose the right Fujifilm camera, lens, and accessories.';
+export const DEFAULT_OG_IMAGE =
+  'https://www.fujifinder.my.id/fujifinder-logo.jpg';
 
 export const PRODUCTION_CANONICAL_HOST = 'https://www.fujifinder.my.id';
 
@@ -29,7 +29,7 @@ export const PRODUCTION_CANONICAL_HOST = 'https://www.fujifinder.my.id';
  * Returns canonical origin, standardizing to https://www.fujifinder.my.id on production
  */
 export function getCanonicalOrigin(baseUrl?: string): string {
-  if (baseUrl) return baseUrl;
+  if (baseUrl) return baseUrl.replace(/\/+$/, '');
   if (typeof window !== 'undefined') {
     const host = window.location.hostname;
     if (
@@ -90,11 +90,13 @@ function setJsonLd(id: string, data: object) {
  * Updates all HTML Head SEO Tags dynamically (Title, Description, Canonical, OG, Twitter, JSON-LD)
  */
 export function updateDocumentSEO(config: Partial<SEOConfig>) {
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const origin = getCanonicalOrigin();
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-  const currentUrl = config.canonicalUrl || (origin ? `${origin}${pathname}` : '');
+  const currentUrl = config.canonicalUrl || (origin ? `${origin}${pathname === '/' ? '' : pathname}` : PRODUCTION_CANONICAL_HOST);
 
-  const title = config.title ? `${config.title} | ${DEFAULT_SITE_NAME}` : DEFAULT_SITE_TITLE;
+  const title = config.title 
+    ? (config.title.includes(DEFAULT_SITE_NAME) ? config.title : `${config.title} | ${DEFAULT_SITE_NAME}`)
+    : DEFAULT_SITE_TITLE;
   const description = config.description || DEFAULT_SITE_DESC;
   const ogImage = config.ogImage || DEFAULT_OG_IMAGE;
   const ogType = config.ogType || 'website';
@@ -107,13 +109,11 @@ export function updateDocumentSEO(config: Partial<SEOConfig>) {
   setMetaTag('name', 'robots', 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1');
 
   // 3. Canonical URL
-  if (currentUrl) {
-    setCanonicalLink(currentUrl);
-  }
+  setCanonicalLink(currentUrl);
 
   // 4. OpenGraph Tags
   setMetaTag('property', 'og:site_name', DEFAULT_SITE_NAME);
-  setMetaTag('property', 'og:title', config.title || DEFAULT_SITE_TITLE);
+  setMetaTag('property', 'og:title', title);
   setMetaTag('property', 'og:description', description);
   setMetaTag('property', 'og:url', currentUrl);
   setMetaTag('property', 'og:type', ogType);
@@ -124,9 +124,10 @@ export function updateDocumentSEO(config: Partial<SEOConfig>) {
 
   // 5. Twitter Card
   setMetaTag('name', 'twitter:card', 'summary_large_image');
-  setMetaTag('name', 'twitter:title', config.title || DEFAULT_SITE_TITLE);
+  setMetaTag('name', 'twitter:title', title);
   setMetaTag('name', 'twitter:description', description);
   setMetaTag('name', 'twitter:image', ogImage);
+  setMetaTag('name', 'twitter:url', currentUrl);
 
   // 6. JSON-LD Structured Data
   if (ogType === 'article') {
@@ -149,28 +150,53 @@ export function updateDocumentSEO(config: Partial<SEOConfig>) {
       publisher: {
         '@type': 'Organization',
         name: DEFAULT_SITE_NAME,
+        url: PRODUCTION_CANONICAL_HOST,
         logo: {
           '@type': 'ImageObject',
-          url: `${origin}/favicon.ico`,
+          url: `${PRODUCTION_CANONICAL_HOST}/fujifinder-logo.jpg`,
         },
       },
-      articleSection: config.articleSection || 'Photography',
+      articleSection: config.articleSection || 'Fujifilm Photography',
       keywords: config.keywords?.join(', '),
     };
     setJsonLd('seo-article-jsonld', articleJsonLd);
   } else {
-    // Website Structured Data for homepage & catalog
+    // WebSite & Organization Structured Data for homepage & catalog
     const websiteJsonLd = {
       '@context': 'https://schema.org',
-      '@type': 'WebSite',
-      name: DEFAULT_SITE_NAME,
-      url: origin || 'https://fujifinder.app',
-      description: DEFAULT_SITE_DESC,
-      potentialAction: {
-        '@type': 'SearchAction',
-        target: `${origin}/?q={search_term_string}`,
-        'query-input': 'required name=search_term_string',
-      },
+      '@graph': [
+        {
+          '@type': 'WebSite',
+          '@id': `${PRODUCTION_CANONICAL_HOST}/#website`,
+          url: PRODUCTION_CANONICAL_HOST,
+          name: DEFAULT_SITE_NAME,
+          description: DEFAULT_SITE_DESC,
+          inLanguage: 'id-ID',
+          publisher: {
+            '@id': `${PRODUCTION_CANONICAL_HOST}/#organization`,
+          },
+          potentialAction: {
+            '@type': 'SearchAction',
+            target: {
+              '@type': 'EntryPoint',
+              urlTemplate: `${PRODUCTION_CANONICAL_HOST}/?q={search_term_string}`,
+            },
+            'query-input': 'required name=search_term_string',
+          },
+        },
+        {
+          '@type': 'Organization',
+          '@id': `${PRODUCTION_CANONICAL_HOST}/#organization`,
+          name: DEFAULT_SITE_NAME,
+          url: PRODUCTION_CANONICAL_HOST,
+          logo: {
+            '@type': 'ImageObject',
+            url: `${PRODUCTION_CANONICAL_HOST}/fujifinder-logo.jpg`,
+            caption: 'FujiFinder — Dedicated Fujifilm Camera Platform',
+          },
+          description: 'FujiFinder is a dedicated Fujifilm camera and photography platform helping photographers discover, compare, review, and choose Fujifilm cameras, lenses, and accessories.',
+        },
+      ],
     };
     setJsonLd('seo-article-jsonld', websiteJsonLd);
   }
@@ -184,27 +210,30 @@ export function setArticleSEO(article: Article, baseUrl?: string) {
   const publicUrl = `${origin}/artikel/${article.slug}`;
 
   updateDocumentSEO({
-    title: article.seoTitle?.trim() || article.title,
+    title: article.seoTitle?.trim() || `${article.title} — ${DEFAULT_SITE_NAME}`,
     description: article.metaDescription?.trim() || article.summary,
     canonicalUrl: publicUrl,
     ogType: 'article',
-    ogImage: article.coverImage,
+    ogImage: article.coverImage || DEFAULT_OG_IMAGE,
     ogImageAlt: article.coverImageAlt || article.title,
     datePublished: article.date,
     dateModified: article.dateModified || article.date,
     authorName: article.author?.name || 'FujiFinder Editorial Team',
-    articleSection: article.category,
+    articleSection: article.category || 'Fujifilm Photography',
     keywords: article.tags,
   });
 }
 
 /**
- * Resets document SEO back to default website homepage metadata
+ * Resets document SEO back to default website homepage metadata or specific route
  */
-export function resetDefaultSEO(pageTitle?: string, pageDesc?: string) {
+export function resetDefaultSEO(pageTitle?: string, pageDesc?: string, canonicalPath?: string) {
+  const origin = getCanonicalOrigin();
+  const canonicalUrl = canonicalPath ? `${origin}${canonicalPath}` : `${origin}/`;
   updateDocumentSEO({
     title: pageTitle,
     description: pageDesc,
+    canonicalUrl: canonicalUrl,
     ogType: 'website',
   });
 }

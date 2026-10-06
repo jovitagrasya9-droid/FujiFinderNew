@@ -1,6 +1,6 @@
 {
   "name": "FujiFinder",
-  "description": "Premium editorial camera and photography media publication, in-depth gear reviews, buyer guides, and camera discovery platform.",
+  "description": "Fujifilm camera reviews, comparisons, buying guides, and photography tips to help you choose the right Fujifilm camera, lens, and accessories.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

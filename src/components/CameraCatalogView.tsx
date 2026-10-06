@@ -55,14 +55,14 @@ export const CameraCatalogView: React.FC<CameraCatalogViewProps> = ({
             Beranda
           </button>
           <span>/</span>
-          <span className="text-neutral-900">Katalog Kamera & Gear</span>
+          <span className="text-neutral-900">Katalog Kamera Fujifilm</span>
         </div>
 
         <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-neutral-900">
-          Katalog & Eksplorasi Kamera
+          Katalog Kamera Fujifilm & Spesifikasi Lengkap
         </h1>
         <p className="text-sm sm:text-base text-neutral-500 mt-2 max-w-2xl">
-          Telusuri kamera terverifikasi, bandingkan spesifikasi teknis, sensor, dan estimasi harga resmi dalam Rupiah (IDR).
+          Telusuri kamera mirrorless Fujifilm X Series dan GFX Series, bandingkan sensor X-Trans, Film Simulation, dan spesifikasi teknis lengkap.
         </p>
       </div>
 

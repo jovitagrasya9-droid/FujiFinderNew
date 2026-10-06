@@ -41,48 +41,43 @@ export const Footer: React.FC<FooterProps> = ({
             </button>
 
             <p className="text-sm text-neutral-600 max-w-sm leading-relaxed">
-              An independent camera media journal and gear discovery platform. We deliver rigorous lab testing, field reviews, and practical guides for photographers and filmmakers.
+              FujiFinder is a dedicated Fujifilm camera and photography platform helping photographers discover, compare, review, and choose Fujifilm X Series and GFX cameras, lenses, and accessories.
             </p>
 
-            <div className="pt-2 text-xs text-neutral-400">
-              Lab tested in Vancouver, Tokyo & London.
+            <div className="pt-2 text-xs text-neutral-500 font-medium">
+              Dedicated Fujifilm camera guides, reviews & community.
             </div>
           </div>
 
           {/* Nav Col 1: Explore */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-900">
-              Explore
+              Jelajahi
             </h4>
             <ul className="space-y-2 text-sm text-neutral-600">
               <li>
                 <button onClick={() => onNavigate('home')} className="hover:text-neutral-950 transition-colors cursor-pointer">
-                  Home
+                  Beranda
                 </button>
               </li>
               <li>
                 <button onClick={() => onNavigate('cameras')} className="hover:text-neutral-950 transition-colors cursor-pointer">
-                  Camera Database
+                  Katalog Kamera Fujifilm
                 </button>
               </li>
               <li>
                 <button onClick={() => onNavigate('reviews')} className="hover:text-neutral-950 transition-colors cursor-pointer">
-                  In-Depth Reviews
+                  Ulasan & Review
                 </button>
               </li>
               <li>
                 <button onClick={() => onNavigate('guides')} className="hover:text-neutral-950 transition-colors cursor-pointer">
-                  Buyer Guides
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onNavigate('cameras')} className="hover:text-neutral-950 transition-colors cursor-pointer">
-                  Camera Database
+                  Panduan Membeli
                 </button>
               </li>
               <li>
                 <button onClick={() => onNavigate('blog')} className="hover:text-neutral-950 transition-colors cursor-pointer">
-                  Editorial Blog
+                  Jurnal Fotografi
                 </button>
               </li>
             </ul>
@@ -91,7 +86,7 @@ export const Footer: React.FC<FooterProps> = ({
           {/* Nav Col 2: Categories */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-900">
-              Camera Types
+              Kategori Gear
             </h4>
             <ul className="space-y-2 text-sm text-neutral-600">
               {cameraTypes.map((type) => (
@@ -110,20 +105,20 @@ export const Footer: React.FC<FooterProps> = ({
           {/* Nav Col 3: Editorial Standards & Transparency */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-900">
-              Publication
+              Informasi & Standar
             </h4>
             <ul className="space-y-2 text-sm text-neutral-600">
               <li>
-                <span className="cursor-default">Testing Methodology</span>
+                <span className="cursor-default">Metodologi Pengujian</span>
               </li>
               <li>
-                <span className="cursor-default">Editorial Independence</span>
+                <span className="cursor-default">Independensi Editorial</span>
               </li>
               <li>
-                <span className="cursor-default">Ethics Policy</span>
+                <span className="cursor-default">Kebijakan Etika</span>
               </li>
               <li>
-                <span className="cursor-default">Affiliate Disclosure</span>
+                <span className="cursor-default">Keterbukaan Afiliasi</span>
               </li>
               <li>
                 <a
@@ -134,9 +129,6 @@ export const Footer: React.FC<FooterProps> = ({
                 >
                   XML Sitemap
                 </a>
-              </li>
-              <li>
-                <span className="cursor-default">Contact the Editors</span>
               </li>
               {onOpenCMS && (
                 <li>
@@ -156,7 +148,7 @@ export const Footer: React.FC<FooterProps> = ({
         {/* Affiliate Disclosure & Bottom Bar */}
         <div className="pt-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs text-neutral-500">
           <p className="max-w-2xl leading-relaxed">
-            <strong className="text-neutral-700">Affiliate Disclosure:</strong> FujiFinder is an independently owned publication. When you purchase cameras, lenses, or accessories through links on our site, we may earn an affiliate commission at no additional cost to you. We never accept paid positive reviews.
+            <strong className="text-neutral-700">Keterbukaan Afiliasi:</strong> FujiFinder adalah platform editorial independen. Saat Anda membeli kamera Fujifilm, lensa, atau aksesori melalui tautan di situs kami, kami dapat memperoleh komisi afiliasi tanpa biaya tambahan bagi Anda. Kami tidak menerima ulasan berbayar yang tidak objektif.
           </p>
 
           <div className="flex items-center gap-3 shrink-0">

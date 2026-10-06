@@ -34,17 +34,17 @@ export const BlogView: React.FC<BlogViewProps> = ({
       <div className="mb-8">
         <div className="flex items-center gap-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
           <button onClick={onBackToHome} className="hover:text-neutral-900 transition-colors cursor-pointer">
-            Home
+            Beranda
           </button>
           <span>/</span>
-          <span className="text-neutral-900">Editorial Blog</span>
+          <span className="text-neutral-900">Jurnal Fotografi Fujifilm</span>
         </div>
 
         <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-neutral-900">
-          The FujiFinder Journal
+          The FujiFinder Journal — Tips & Catatan Lapangan Fujifilm
         </h1>
         <p className="text-sm sm:text-base text-neutral-500 mt-2 max-w-2xl">
-          Dispatches from the field, technical deep-dives, lens teardowns, and visual storytelling essays.
+          Artikel editorial, deep dive sensor X-Trans, pengujian lensa Fujinon, resep Film Simulation, dan panduan visual storytelling untuk fotografer Fujifilm.
         </p>
       </div>
 

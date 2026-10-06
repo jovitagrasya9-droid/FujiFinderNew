@@ -38,14 +38,14 @@ export const ReviewsView: React.FC<ReviewsViewProps> = ({
             Beranda
           </button>
           <span>/</span>
-          <span className="text-neutral-900">Ulasan Kamera & Benchmark</span>
+          <span className="text-neutral-900">Ulasan & Review Kamera Fujifilm</span>
         </div>
 
         <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-neutral-900">
-          Ulasan Kamera Independen & Pengujian Lapangan
+          Ulasan Kamera Fujifilm & Pengujian Lapangan
         </h1>
         <p className="text-sm sm:text-base text-neutral-500 mt-2 max-w-2xl">
-          Tanpa rating bayaran. Kami menguji dynamic range, noise high-ISO, akurasi autofocus, dan reproduksi warna di skenario pemotretan nyata.
+          Ulasan mendalam dan pengujian lapangan untuk kamera Fujifilm. Kami menguji color science Film Simulation, dynamic range sensor X-Trans, autofocus, dan performa lensa Fujinon.
         </p>
       </div>
 

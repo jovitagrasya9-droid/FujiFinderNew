@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
+import { HomeIntroSection } from './components/HomeIntroSection';
 import { CategoriesSection } from './components/CategoriesSection';
 import { PopularNowSection } from './components/PopularNowSection';
 import { FeaturedGuideAndSidebar } from './components/FeaturedGuideAndSidebar';
@@ -256,7 +257,7 @@ export default function App() {
   // Track SPA pageviews in Google Analytics
   useEffect(() => {
     let path = '/';
-    let title = 'FujiFinder — The Art & Science of Modern Cameras';
+    let title = 'FujiFinder — Fujifilm Camera Reviews, Guides & Comparisons';
 
     if (currentView === 'public-article' && publicArticle) {
       path = `/artikel/${publicArticle.slug}`;
@@ -266,16 +267,16 @@ export default function App() {
       title = 'Halaman Tidak Ditemukan — FujiFinder';
     } else if (currentView === 'cameras') {
       path = selectedCategoryFilter ? `/kamera?kategori=${selectedCategoryFilter}` : '/kamera';
-      title = selectedCategoryFilter ? `Katalog Kamera ${selectedCategoryFilter} — FujiFinder` : 'Katalog Kamera — FujiFinder';
+      title = selectedCategoryFilter ? `Katalog Kamera Fujifilm ${selectedCategoryFilter} — FujiFinder` : 'Katalog Kamera Fujifilm — FujiFinder';
     } else if (currentView === 'reviews') {
       path = '/reviews';
-      title = 'Lab Reviews & Field Tests — FujiFinder';
+      title = 'Ulasan & Review Kamera Fujifilm — FujiFinder';
     } else if (currentView === 'guides') {
       path = '/guides';
-      title = 'Panduan Fotografi & Resep Film — FujiFinder';
+      title = 'Panduan Membeli Kamera Fujifilm & Tutorial — FujiFinder';
     } else if (currentView === 'blog') {
       path = '/blog';
-      title = 'Jurnal & Opini Fotografi — FujiFinder';
+      title = 'Jurnal & Tips Fotografi Fujifilm — FujiFinder';
     }
 
     trackPageView(path, title);
@@ -507,6 +508,12 @@ export default function App() {
               articles={publishedArticles}
               onReadStory={handleReadHeroStory}
               onExploreCameras={() => handleNavigate('cameras')}
+            />
+
+            {/* 1.1 Dedicated Fujifilm Platform Introduction (SEO & Editorial) */}
+            <HomeIntroSection
+              onNavigateToCameras={() => handleNavigate('cameras')}
+              onSelectCategory={handleSelectCategory}
             />
 
             {/* 2. Explore by Category Section */}

@@ -25,17 +25,17 @@ export const GuidesView: React.FC<GuidesViewProps> = ({
       <div className="mb-8">
         <div className="flex items-center gap-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
           <button onClick={onBackToHome} className="hover:text-neutral-900 transition-colors cursor-pointer">
-            Home
+            Beranda
           </button>
           <span>/</span>
-          <span className="text-neutral-900">Buyer Guides & Tutorials</span>
+          <span className="text-neutral-900">Panduan Membeli Kamera Fujifilm & Tutorial</span>
         </div>
 
         <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-neutral-900">
-          Camera Buying Guides & Photography Masterclasses
+          Panduan Membeli Kamera Fujifilm & Resep Simulasi Film
         </h1>
         <p className="text-sm sm:text-base text-neutral-500 mt-2 max-w-2xl">
-          Actionable, jargon-free guides to help you navigate sensor formats, prime lenses, exposure triangles, and gear budgets.
+          Panduan praktis dan lengkap untuk membantu Anda memilih bodi kamera Fujifilm X Series, GFX Series, lensa Fujinon, resep Film Simulation, dan teknik fotografi.
         </p>
       </div>
 

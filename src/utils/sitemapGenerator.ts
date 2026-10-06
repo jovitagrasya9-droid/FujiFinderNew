@@ -16,31 +16,31 @@ export const STATIC_PUBLIC_ROUTES: StaticRouteConfig[] = [
     path: '/',
     changefreq: 'daily',
     priority: '1.0',
-    title: 'FujiFinder — The Art & Science of Modern Cameras',
+    title: 'FujiFinder — Fujifilm Camera Reviews, Guides & Comparisons',
   },
   {
     path: '/kamera',
     changefreq: 'daily',
     priority: '0.9',
-    title: 'Katalog Kamera Mirrorless & Compact',
+    title: 'Katalog Kamera Fujifilm & Spesifikasi Lengkap',
   },
   {
     path: '/reviews',
     changefreq: 'weekly',
     priority: '0.8',
-    title: 'Lab Reviews & Field Tests',
+    title: 'Ulasan & Review Kamera Fujifilm',
   },
   {
     path: '/guides',
     changefreq: 'weekly',
     priority: '0.8',
-    title: 'Panduan Fotografi & Resep Film',
+    title: 'Panduan Membeli Kamera Fujifilm & Tutorial',
   },
   {
     path: '/blog',
     changefreq: 'weekly',
     priority: '0.8',
-    title: 'Jurnal & Opini Editorial Fotografi',
+    title: 'Jurnal & Tips Fotografi Fujifilm',
   },
 ];
 
