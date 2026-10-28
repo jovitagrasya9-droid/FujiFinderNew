@@ -391,8 +391,8 @@ export default function App() {
   };
 
   const handleDeleteArticle = (id: string) => {
-    setArticles((prev) => prev.filter((a) => a.id !== id));
-    if (publicArticle && publicArticle.id === id) {
+    setArticles((prev) => prev.filter((a) => String(a.id) !== String(id) && a.slug !== id));
+    if (publicArticle && (String(publicArticle.id) === String(id) || publicArticle.slug === id)) {
       handleNavigate('home');
     }
     deleteArticleFromSupabase(id).catch((err) => {
@@ -415,15 +415,15 @@ export default function App() {
   };
 
   const handleDeleteCamera = (id: string) => {
-    setCameras((prev) => prev.filter((c) => c.id !== id));
+    setCameras((prev) => prev.filter((c) => String(c.id) !== String(id)));
     deleteCameraFromSupabase(id).catch((err) => {
       console.warn('Background Supabase camera delete notice:', err);
     });
   };
 
   const handleClearAllData = () => {
-    safeRemoveItem('fujifinder_articles');
-    safeRemoveItem('fujifinder_cameras');
+    safeSetItem('fujifinder_articles', []);
+    safeSetItem('fujifinder_cameras', []);
     setArticles([]);
     setCameras([]);
   };

@@ -21,6 +21,7 @@ import {
   LogOut,
   ShieldCheck,
   AlertCircle,
+  AlertTriangle,
   UserCheck,
   RefreshCw,
   Globe,
@@ -33,6 +34,7 @@ import {
   HardDrive,
   Cloud,
   CheckCircle2,
+  ArrowLeft,
 } from 'lucide-react';
 import { Article, Author, CameraProduct, CategoryType } from '../types';
 import { DEFAULT_AUTHOR } from '../data/mockData';
@@ -360,6 +362,61 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
       };
     });
   });
+
+  const [copiedXmlModal, setCopiedXmlModal] = useState(false);
+
+  // Custom in-app Confirmation Dialog state (replaces blocked window.confirm)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    isDestructive?: boolean;
+    onConfirm: () => void;
+  } | null>(null);
+
+  const requestConfirm = (opts: {
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    isDestructive?: boolean;
+    onConfirm: () => void;
+  }) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: opts.title,
+      message: opts.message,
+      confirmLabel: opts.confirmLabel || 'Hapus',
+      cancelLabel: opts.cancelLabel || 'Batal',
+      isDestructive: opts.isDestructive !== false,
+      onConfirm: opts.onConfirm,
+    });
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (confirmDialog?.isOpen) {
+          setConfirmDialog(null);
+        } else if (showSitemapModal) {
+          setShowSitemapModal(false);
+        } else if (previewArticle) {
+          setPreviewArticle(null);
+        } else if (showArticleForm) {
+          setShowArticleForm(false);
+        } else if (showCameraForm) {
+          setShowCameraForm(false);
+        } else {
+          onClose();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, confirmDialog, showSitemapModal, previewArticle, showArticleForm, showCameraForm, onClose]);
 
   if (!isOpen) return null;
 
@@ -765,54 +822,51 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
 
   return (
     <div
-      id="admin-cms-overlay"
-      className="fixed inset-0 z-50 overflow-y-auto bg-neutral-950/80 backdrop-blur-md flex justify-center p-2 sm:p-4 md:p-8 animate-fadeIn"
-      onClick={onClose}
+      id="admin-cms-fullscreen"
+      className="fixed inset-0 z-50 w-screen h-screen min-h-screen bg-neutral-950 flex flex-col overflow-hidden animate-fadeIn select-auto"
     >
-      <div
-        id="admin-cms-modal"
-        onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-5xl bg-white rounded-3xl overflow-hidden shadow-2xl my-auto text-neutral-900 border border-neutral-200 flex flex-col max-h-[90vh]"
-      >
-        {/* ========================================================================= */}
-        {/* PASSWORD LOCK SCREEN (IF NOT AUTHENTICATED) */}
-        {/* ========================================================================= */}
-        {!isAuthenticated ? (
-          <div className="flex flex-col">
-            {/* Header Lock */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 bg-neutral-900 text-white">
-              <div className="flex items-center gap-3">
-                <FujiFinderLogo variant="light" size="sm" showTagline={false} />
-                <span className="text-neutral-500 font-normal">|</span>
-                <div>
-                  <h2 className="text-sm font-bold leading-tight text-neutral-200">Editorial CMS</h2>
-                  <p className="text-[11px] text-neutral-400">Autentikasi Akses Administrator</p>
-                </div>
+      {/* ========================================================================= */}
+      {/* PASSWORD LOCK SCREEN (IF NOT AUTHENTICATED) */}
+      {/* ========================================================================= */}
+      {!isAuthenticated ? (
+        <div className="flex-1 flex flex-col h-full overflow-y-auto bg-neutral-950 text-white">
+          {/* Header Lock */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 bg-neutral-900 text-white shrink-0">
+            <div className="flex items-center gap-3">
+              <FujiFinderLogo variant="light" size="sm" showTagline={false} />
+              <span className="text-neutral-600 font-normal">|</span>
+              <div>
+                <h2 className="text-sm font-bold leading-tight text-neutral-200">Editorial CMS</h2>
+                <p className="text-[11px] text-neutral-400">Autentikasi Akses Administrator</p>
               </div>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
+            <button
+              onClick={onClose}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 hover:text-white transition-colors cursor-pointer text-xs font-semibold border border-neutral-700"
+              title="Kembali ke Website"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Kembali ke Website</span>
+            </button>
+          </div>
 
-            {/* Login Box */}
-            <div className="p-8 sm:p-10 flex flex-col items-center justify-center text-center max-w-md mx-auto w-full">
+          {/* Login Box */}
+          <div className="flex-1 flex items-center justify-center p-6 bg-gradient-to-b from-neutral-950 via-neutral-900 to-neutral-950">
+            <div className="p-8 sm:p-10 flex flex-col items-center justify-center text-center max-w-md w-full bg-neutral-900/95 backdrop-blur-md rounded-3xl border border-neutral-800 shadow-2xl">
               <div className="mb-5">
-                <FujiFinderLogo variant="dark" size="lg" layout="stacked" showTagline={true} />
+                <FujiFinderLogo variant="light" size="lg" layout="stacked" showTagline={true} />
               </div>
 
-              <h3 className="text-lg sm:text-xl font-black text-neutral-900 mb-2">
+              <h3 className="text-xl sm:text-2xl font-black text-white mb-2">
                 Masukkan Kata Sandi CMS
               </h3>
-              <p className="text-xs sm:text-sm text-neutral-500 leading-relaxed mb-6">
-                Akses CMS diamankan dengan proteksi sandi untuk mengelola artikel, profil editor, katalog kamera, dan subscribers.
+              <p className="text-xs sm:text-sm text-neutral-400 leading-relaxed mb-6">
+                Akses CMS diamankan dengan proteksi sandi untuk mengelola artikel, profil editor, katalog kamera, Supabase & XML sitemap.
               </p>
 
               {authError && (
-                <div className="w-full mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2 text-left animate-fadeIn">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
+                <div className="w-full mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center gap-2 text-left animate-fadeIn">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
                   <span>{authError}</span>
                 </div>
               )}
@@ -829,12 +883,12 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
                       if (authError) setAuthError(null);
                     }}
                     placeholder="Masukkan kata sandi..."
-                    className="w-full text-xs sm:text-sm px-4 py-3 pr-10 rounded-xl border border-neutral-300 bg-white focus:outline-none focus:border-neutral-950 focus:ring-1 focus:ring-neutral-950 transition-all"
+                    className="w-full text-xs sm:text-sm px-4 py-3 pr-10 rounded-xl border border-neutral-700 bg-neutral-800 text-white placeholder-neutral-500 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 p-1 cursor-pointer"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-200 p-1 cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -842,70 +896,80 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
 
                 <button
                   type="submit"
-                  className="w-full py-3 px-4 rounded-xl text-xs sm:text-sm font-bold bg-neutral-950 text-white hover:bg-neutral-800 transition-colors shadow-md cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 rounded-xl text-xs sm:text-sm font-bold bg-white text-neutral-950 hover:bg-neutral-200 transition-colors shadow-md cursor-pointer flex items-center justify-center gap-2"
                 >
                   <Unlock className="w-4 h-4" />
                   <span>Buka Akses CMS</span>
                 </button>
               </form>
 
-              <div className="mt-6 pt-4 border-t border-neutral-200 w-full flex items-center justify-between text-[11px] text-neutral-500">
-                <span>Password default: <strong className="text-neutral-800 font-mono">admin</strong></span>
-                <span className="text-neutral-400">FujiFinder System</span>
+              <div className="mt-6 pt-4 border-t border-neutral-800 w-full flex items-center justify-between text-[11px] text-neutral-400">
+                <span>Password default: <strong className="text-white font-mono bg-neutral-800 px-1.5 py-0.5 rounded">admin</strong></span>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="text-neutral-400 hover:text-white underline cursor-pointer"
+                >
+                  Batal & Kembali
+                </button>
               </div>
             </div>
           </div>
-        ) : (
-          /* ========================================================================= */
-          /* AUTHENTICATED CMS DASHBOARD */
-          /* ========================================================================= */
-          <>
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 bg-neutral-900 text-white shrink-0">
-              <div className="flex items-center gap-3">
-                <FujiFinderLogo variant="light" size="sm" showTagline={false} />
-                <span className="text-neutral-500 font-normal">|</span>
-                <div>
-                  <h2 className="text-sm font-bold leading-tight flex items-center gap-2">
-                    <span className="text-neutral-100">Editorial CMS Studio</span>
-                    <span className="text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3" />
-                      Terproteksi
-                    </span>
-                  </h2>
-                  <p className="text-[11px] text-neutral-400">Manajemen konten artikel, editor, katalog kamera & subscribers</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowChangePassword(!showChangePassword)}
-                  title="Ganti Password CMS"
-                  className="p-2 rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors cursor-pointer text-xs flex items-center gap-1.5 px-3"
-                >
-                  <KeyRound className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Ganti Password</span>
-                </button>
-
-                <button
-                  onClick={handleLogout}
-                  title="Kunci / Logout dari CMS"
-                  className="p-2 rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors cursor-pointer text-xs flex items-center gap-1.5 px-3"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Kunci</span>
-                </button>
-
-                <button
-                  onClick={onClose}
-                  className="p-2 rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+        </div>
+      ) : (
+        /* ========================================================================= */
+        /* AUTHENTICATED CMS DASHBOARD */
+        /* ========================================================================= */
+        <div className="flex-1 flex flex-col h-full overflow-hidden bg-neutral-100 text-neutral-900">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-neutral-800 bg-neutral-950 text-white shrink-0">
+            <div className="flex items-center gap-3">
+              <FujiFinderLogo variant="light" size="sm" showTagline={false} />
+              <span className="text-neutral-700 font-normal">|</span>
+              <div>
+                <h2 className="text-sm font-bold leading-tight flex items-center gap-2">
+                  <span className="text-neutral-100">Editorial CMS Studio</span>
+                  <span className="text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3" />
+                    Terproteksi
+                  </span>
+                </h2>
+                <p className="text-[11px] text-neutral-400 hidden sm:block">Manajemen konten artikel, editor, katalog kamera, Supabase & XML sitemap</p>
               </div>
             </div>
 
-            {/* Change Password Bar (If toggled) */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowChangePassword(!showChangePassword)}
+                title="Ganti Password CMS"
+                className="p-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer text-xs flex items-center gap-1.5 px-3 border border-neutral-800"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Ganti Password</span>
+              </button>
+
+              <button
+                onClick={handleLogout}
+                title="Kunci / Logout dari CMS"
+                className="p-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer text-xs flex items-center gap-1.5 px-3 border border-neutral-800"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Kunci</span>
+              </button>
+
+              <button
+                onClick={onClose}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-bold border border-neutral-700 transition-colors cursor-pointer shadow-sm ml-2"
+                title="Kembali ke Website FujiFinder"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Kembali ke Website</span>
+                <span className="sm:hidden">Tutup</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Change Password Bar (If toggled) */}
             {showChangePassword && (
               <form
                 onSubmit={handleChangePassword}
@@ -974,10 +1038,19 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
 
                 {(articles.length > 0 || cameras.length > 0) && (
                   <button
+                    type="button"
                     onClick={() => {
-                      if (window.confirm('Hapus semua artikel dan kamera dari database?')) {
-                        onClearAllData();
-                      }
+                      requestConfirm({
+                        title: 'Hapus Semua Data?',
+                        message: 'Apakah Anda yakin ingin menghapus semua artikel dan kamera dari database?',
+                        confirmLabel: 'Ya, Hapus Semua',
+                        isDestructive: true,
+                        onConfirm: () => {
+                          onClearAllData();
+                          setArtSuccess('Semua data berhasil dibersihkan.');
+                          setTimeout(() => setArtSuccess(null), 3000);
+                        },
+                      });
                     }}
                     className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 font-medium cursor-pointer transition-colors"
                   >
@@ -1076,8 +1149,9 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
             </div>
 
             {/* Scrollable Content Body */}
-            <div className="p-4 sm:p-6 overflow-y-auto flex-grow space-y-6">
-              {/* ========================================================================= */}
+            <div className="p-4 sm:p-6 lg:p-8 overflow-y-auto flex-grow bg-neutral-100/60">
+              <div className="max-w-7xl mx-auto w-full space-y-6">
+                {/* ========================================================================= */}
               {/* TAB 1: ARTIKEL & JURNAL */}
               {/* ========================================================================= */}
               {activeTab === 'articles' && (
@@ -1602,6 +1676,23 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
                         </button>
                       </div>
 
+                      {/* Notification feedback banner for article actions */}
+                      {artSuccess && (
+                        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center justify-between gap-2 animate-fadeIn mb-2">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span>{artSuccess}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setArtSuccess(null)}
+                            className="text-emerald-700 hover:text-emerald-950 p-1 cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+
                       {/* Tabel Manajemen Artikel */}
                       {filteredArticles.length === 0 ? (
                         <div className="p-8 text-center bg-neutral-50 rounded-2xl border border-neutral-200">
@@ -1738,13 +1829,22 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
                                           <Edit3 className="w-3.5 h-3.5" />
                                         </button>
                                         <button
+                                          type="button"
                                           onClick={() => {
-                                            if (window.confirm(`Hapus artikel "${art.title}"?`)) {
-                                              onDeleteArticle(art.id);
-                                            }
+                                            requestConfirm({
+                                              title: 'Hapus Artikel?',
+                                              message: `Apakah Anda yakin ingin menghapus artikel "${art.title}"? Tindakan ini akan menghapusnya dari database dan XML sitemap.`,
+                                              confirmLabel: 'Ya, Hapus Artikel',
+                                              isDestructive: true,
+                                              onConfirm: () => {
+                                                onDeleteArticle(art.id);
+                                                setArtSuccess(`Artikel "${art.title.slice(0, 32)}..." berhasil dihapus.`);
+                                                setTimeout(() => setArtSuccess(null), 3000);
+                                              },
+                                            });
                                           }}
                                           title="Hapus Artikel"
-                                          className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+                                          className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
                                         >
                                           <Trash2 className="w-3.5 h-3.5" />
                                         </button>
@@ -2130,6 +2230,23 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
                         </button>
                       </div>
 
+                      {/* Notification feedback banner for camera actions */}
+                      {camSuccess && (
+                        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center justify-between gap-2 animate-fadeIn mb-2">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span>{camSuccess}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setCamSuccess(null)}
+                            className="text-emerald-700 hover:text-emerald-950 p-1 cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+
                       {/* Tabel Manajemen Kamera */}
                       {filteredCameras.length === 0 ? (
                         <div className="p-8 text-center bg-neutral-50 rounded-2xl border border-neutral-200">
@@ -2200,13 +2317,22 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
                                           <Edit3 className="w-3.5 h-3.5" />
                                         </button>
                                         <button
+                                          type="button"
                                           onClick={() => {
-                                            if (window.confirm(`Hapus kamera "${cam.name}"?`)) {
-                                              onDeleteCamera(cam.id);
-                                            }
+                                            requestConfirm({
+                                              title: 'Hapus Kamera?',
+                                              message: `Apakah Anda yakin ingin menghapus kamera "${cam.name}" dari katalog?`,
+                                              confirmLabel: 'Ya, Hapus Kamera',
+                                              isDestructive: true,
+                                              onConfirm: () => {
+                                                onDeleteCamera(cam.id);
+                                                setCamSuccess(`Kamera "${cam.name}" berhasil dihapus.`);
+                                                setTimeout(() => setCamSuccess(null), 3000);
+                                              },
+                                            });
                                           }}
                                           title="Hapus Kamera"
-                                          className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+                                          className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
                                         >
                                           <Trash2 className="w-3.5 h-3.5" />
                                         </button>
@@ -2360,13 +2486,15 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
                           <button
                             type="button"
                             onClick={() => {
-                              if (
-                                window.confirm(
-                                  `Perbarui nama & avatar editor di SEMUA (${articles.length}) artikel yang ada sekarang?`
-                                )
-                              ) {
-                                handleSaveEditorProfile(true);
-                              }
+                              requestConfirm({
+                                title: 'Perbarui Redaksi Semua Artikel?',
+                                message: `Perbarui nama & avatar editor di SEMUA (${articles.length}) artikel yang ada sekarang?`,
+                                confirmLabel: 'Ya, Terapkan ke Semua',
+                                isDestructive: false,
+                                onConfirm: () => {
+                                  handleSaveEditorProfile(true);
+                                },
+                              });
                             }}
                             className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-semibold bg-white border border-neutral-300 hover:bg-neutral-100 text-neutral-800 transition-colors cursor-pointer"
                           >
@@ -2483,13 +2611,20 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
                               </td>
                               <td className="py-3 px-4 text-right">
                                 <button
+                                  type="button"
                                   onClick={() => {
-                                    if (window.confirm(`Hapus email "${sub.email}" dari subscriber?`)) {
-                                      handleDeleteSubscriber(sub.email);
-                                    }
+                                    requestConfirm({
+                                      title: 'Hapus Subscriber?',
+                                      message: `Hapus email "${sub.email}" dari daftar subscriber?`,
+                                      confirmLabel: 'Ya, Hapus',
+                                      isDestructive: true,
+                                      onConfirm: () => {
+                                        handleDeleteSubscriber(sub.email);
+                                      },
+                                    });
                                   }}
                                   title="Hapus Subscriber"
-                                  className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+                                  className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -2964,7 +3099,7 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
                   </div>
                 </div>
               )}
-
+              </div>
             </div>
 
             {/* Quick Article Preview Modal inside CMS */}
@@ -3078,11 +3213,22 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
                         onClick={() => {
                           const xml = generateSitemapXml(articles);
                           navigator.clipboard?.writeText(xml);
-                          alert('XML Sitemap berhasil disalin ke clipboard!');
+                          setCopiedXmlModal(true);
+                          setTimeout(() => setCopiedXmlModal(false), 2500);
                         }}
-                        className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium cursor-pointer flex items-center gap-1.5"
                       >
-                        Salin XML
+                        {copiedXmlModal ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="text-emerald-400 font-semibold">Tersalin!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Salin XML</span>
+                          </>
+                        )}
                       </button>
                       <button
                         onClick={() => downloadSitemap(articles)}
@@ -3095,9 +3241,70 @@ export const AdminCMSModal: React.FC<AdminCMSModalProps> = ({
                 </div>
               </div>
             )}
-          </>
-        )}
-      </div>
+
+            {/* Custom Accessible In-App Confirmation Modal (Replaces blocked window.confirm) */}
+            {confirmDialog && confirmDialog.isOpen && (
+              <div
+                className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn"
+                onClick={() => setConfirmDialog(null)}
+              >
+                <div
+                  className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-neutral-200 space-y-4 animate-scaleUp text-neutral-900"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-start gap-3.5">
+                    <div
+                      className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
+                        confirmDialog.isDestructive
+                          ? 'bg-rose-100 text-rose-600 border border-rose-200'
+                          : 'bg-neutral-100 text-neutral-800 border border-neutral-200'
+                      }`}
+                    >
+                      {confirmDialog.isDestructive ? (
+                        <AlertTriangle className="w-5 h-5" />
+                      ) : (
+                        <RefreshCw className="w-5 h-5" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-base font-bold text-neutral-900 leading-snug">
+                        {confirmDialog.title}
+                      </h3>
+                      <p className="text-xs text-neutral-600 mt-1 leading-relaxed">
+                        {confirmDialog.message}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-neutral-100">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDialog(null)}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold text-neutral-700 hover:bg-neutral-100 border border-neutral-300 cursor-pointer transition-colors"
+                    >
+                      {confirmDialog.cancelLabel || 'Batal'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const action = confirmDialog.onConfirm;
+                        setConfirmDialog(null);
+                        action();
+                      }}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold text-white cursor-pointer transition-colors shadow-sm ${
+                        confirmDialog.isDestructive
+                          ? 'bg-rose-600 hover:bg-rose-700'
+                          : 'bg-neutral-950 hover:bg-neutral-800'
+                      }`}
+                    >
+                      {confirmDialog.confirmLabel || 'Lanjutkan'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+        </div>
+      )}
     </div>
   );
 };

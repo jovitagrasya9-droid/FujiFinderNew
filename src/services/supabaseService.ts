@@ -327,9 +327,13 @@ export async function deleteArticleFromSupabase(id: string): Promise<{ success: 
     const { error } = await supabase
       .from('articles')
       .delete()
-      .eq('id', id);
+      .or(`id.eq.${id},slug.eq.${id}`);
 
-    if (error) return { success: false, error };
+    if (error) {
+      // Fallback direct eq on id
+      const fallback = await supabase.from('articles').delete().eq('id', id);
+      if (fallback.error) return { success: false, error: fallback.error };
+    }
     return { success: true, error: null };
   } catch (err) {
     return { success: false, error: err };
